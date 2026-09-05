@@ -1,0 +1,519 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "d95e8f895d18a3ae425c39f20776b51c",
+    "entities": [
+      {
+        "tableName": "draws",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`drawNo` INTEGER NOT NULL, `drawDate` TEXT NOT NULL, `n1` INTEGER NOT NULL, `n2` INTEGER NOT NULL, `n3` INTEGER NOT NULL, `n4` INTEGER NOT NULL, `n5` INTEGER NOT NULL, `n6` INTEGER NOT NULL, `bonus` INTEGER NOT NULL, `firstWinners` INTEGER, `firstPrize` INTEGER, `firstTotal` INTEGER, `secondWinners` INTEGER, `secondPrize` INTEGER, `thirdWinners` INTEGER, `thirdPrize` INTEGER, `salesAmount` INTEGER, `source` TEXT NOT NULL, `fetchedAt` INTEGER NOT NULL, `payloadVersion` INTEGER NOT NULL, `rawJson` TEXT, PRIMARY KEY(`drawNo`))",
+        "fields": [
+          {
+            "fieldPath": "drawNo",
+            "columnName": "drawNo",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "drawDate",
+            "columnName": "drawDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "n1",
+            "columnName": "n1",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "n2",
+            "columnName": "n2",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "n3",
+            "columnName": "n3",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "n4",
+            "columnName": "n4",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "n5",
+            "columnName": "n5",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "n6",
+            "columnName": "n6",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bonus",
+            "columnName": "bonus",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstWinners",
+            "columnName": "firstWinners",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "firstPrize",
+            "columnName": "firstPrize",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "firstTotal",
+            "columnName": "firstTotal",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "secondWinners",
+            "columnName": "secondWinners",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "secondPrize",
+            "columnName": "secondPrize",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "thirdWinners",
+            "columnName": "thirdWinners",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "thirdPrize",
+            "columnName": "thirdPrize",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "salesAmount",
+            "columnName": "salesAmount",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fetchedAt",
+            "columnName": "fetchedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payloadVersion",
+            "columnName": "payloadVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rawJson",
+            "columnName": "rawJson",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "drawNo"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "analysis_runs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `createdAt` INTEGER NOT NULL, `latestDrawNo` INTEGER NOT NULL, `recentN` INTEGER NOT NULL, `gameCount` INTEGER NOT NULL, `weightFrequency` INTEGER NOT NULL, `weightConsecutive` INTEGER NOT NULL, `weightParity` INTEGER NOT NULL, `usePrizeIndex` INTEGER NOT NULL, `randomSeed` INTEGER NOT NULL, `algorithmVersion` TEXT NOT NULL, `dataStartDrawNo` INTEGER NOT NULL, `dataEndDrawNo` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latestDrawNo",
+            "columnName": "latestDrawNo",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recentN",
+            "columnName": "recentN",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gameCount",
+            "columnName": "gameCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weightFrequency",
+            "columnName": "weightFrequency",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weightConsecutive",
+            "columnName": "weightConsecutive",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weightParity",
+            "columnName": "weightParity",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usePrizeIndex",
+            "columnName": "usePrizeIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "randomSeed",
+            "columnName": "randomSeed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "algorithmVersion",
+            "columnName": "algorithmVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dataStartDrawNo",
+            "columnName": "dataStartDrawNo",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dataEndDrawNo",
+            "columnName": "dataEndDrawNo",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "analysis_games",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `analysisRunId` INTEGER NOT NULL, `gameIndex` INTEGER NOT NULL, `n1` INTEGER NOT NULL, `n2` INTEGER NOT NULL, `n3` INTEGER NOT NULL, `n4` INTEGER NOT NULL, `n5` INTEGER NOT NULL, `n6` INTEGER NOT NULL, `totalScore` REAL NOT NULL, `frequencyScore` REAL NOT NULL, `consecutiveScore` REAL NOT NULL, `parityScore` REAL NOT NULL, `prizeScore` REAL NOT NULL, `oddCount` INTEGER NOT NULL, `pairCount` INTEGER NOT NULL, `maxOverlap` INTEGER NOT NULL, FOREIGN KEY(`analysisRunId`) REFERENCES `analysis_runs`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "analysisRunId",
+            "columnName": "analysisRunId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gameIndex",
+            "columnName": "gameIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "n1",
+            "columnName": "n1",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "n2",
+            "columnName": "n2",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "n3",
+            "columnName": "n3",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "n4",
+            "columnName": "n4",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "n5",
+            "columnName": "n5",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "n6",
+            "columnName": "n6",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalScore",
+            "columnName": "totalScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "frequencyScore",
+            "columnName": "frequencyScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consecutiveScore",
+            "columnName": "consecutiveScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parityScore",
+            "columnName": "parityScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "prizeScore",
+            "columnName": "prizeScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "oddCount",
+            "columnName": "oddCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pairCount",
+            "columnName": "pairCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maxOverlap",
+            "columnName": "maxOverlap",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_analysis_games_analysisRunId",
+            "unique": false,
+            "columnNames": [
+              "analysisRunId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_analysis_games_analysisRunId` ON `${TABLE_NAME}` (`analysisRunId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "analysis_runs",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "analysisRunId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "expected_value_runs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `createdAt` INTEGER NOT NULL, `latestDrawNo` INTEGER NOT NULL, `recentN` INTEGER NOT NULL, `algorithmVersion` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latestDrawNo",
+            "columnName": "latestDrawNo",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recentN",
+            "columnName": "recentN",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "algorithmVersion",
+            "columnName": "algorithmVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "expected_value_numbers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`runId` INTEGER NOT NULL, `number` INTEGER NOT NULL, `appearanceCount` INTEGER NOT NULL, `appearanceRate` REAL NOT NULL, `prizeSampleCount` INTEGER NOT NULL, `averageFirstPrize` REAL NOT NULL, `rawIndex` REAL NOT NULL, `normalizedScore` REAL NOT NULL, `rank` INTEGER NOT NULL, PRIMARY KEY(`runId`, `number`), FOREIGN KEY(`runId`) REFERENCES `expected_value_runs`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "runId",
+            "columnName": "runId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "number",
+            "columnName": "number",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appearanceCount",
+            "columnName": "appearanceCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appearanceRate",
+            "columnName": "appearanceRate",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "prizeSampleCount",
+            "columnName": "prizeSampleCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "averageFirstPrize",
+            "columnName": "averageFirstPrize",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rawIndex",
+            "columnName": "rawIndex",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalizedScore",
+            "columnName": "normalizedScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rank",
+            "columnName": "rank",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "runId",
+            "number"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_expected_value_numbers_runId",
+            "unique": false,
+            "columnNames": [
+              "runId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_expected_value_numbers_runId` ON `${TABLE_NAME}` (`runId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "expected_value_runs",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "runId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd95e8f895d18a3ae425c39f20776b51c')"
+    ]
+  }
+}
