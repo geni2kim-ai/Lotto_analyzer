@@ -8,7 +8,7 @@ import com.google.gson.Gson
 object NewRemoteDrawResponseValidator {
 
     fun validate(dto: NewRemoteDrawDto, expectedDrawNo: Int? = null): AppError? {
-        return RemoteDrawResponseValidator.validate(
+        return LegacyRemoteDrawResponseValidator.validate(
             RemoteDrawDto(
                 drwNo = dto.ltEpsd,
                 drwtNo1 = dto.tm1WnNo,

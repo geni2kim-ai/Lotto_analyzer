@@ -13,6 +13,8 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
+    // The source namespace remains com.example.lottoinsight for package compatibility.
+    // applicationId is the stable install/store identity and is intentionally different.
     namespace = "com.example.lottoinsight"
     compileSdk = 36
 
@@ -20,8 +22,8 @@ android {
         applicationId = "com.aimaestro.lottoanalyzer"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.0.3"
     }
 
     signingConfigs {
@@ -93,7 +95,6 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation("androidx.core:core-ktx:1.12.0")
 
-    // Firebase BoM & Analytics
     val firebaseBom = platform("com.google.firebase:firebase-bom:33.2.0")
     implementation(firebaseBom)
     implementation("com.google.firebase:firebase-analytics")

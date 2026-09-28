@@ -12,6 +12,8 @@ data class StatisticsUiState(
     val prizeIndexes: List<HistoricalPrizeIndex> = emptyList(),
     val calendarStats: CalendarStatistics? = null,
     val isSyncing: Boolean = false,
+    val syncCompleted: Int = 0,
+    val syncTotal: Int = 0,
     val syncMessage: String? = null,
     val isExpectedValueSaving: Boolean = false,
     val expectedValueRecentN: Int = 100,

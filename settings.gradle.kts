@@ -13,7 +13,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LottoInsightAndroid"
+rootProject.name = "lotto_analyzer"
 include(":app")
 include(":core:common")
 include(":core:model")

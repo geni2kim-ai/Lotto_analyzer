@@ -8,6 +8,8 @@ data class DatabaseUiState(
     val totalDrawsCount: Int = 0,
     val latestDrawNo: Int = 0,
     val recentDraws: List<Draw> = emptyList(),
+    val syncCompleted: Int = 0,
+    val syncTotal: Int = 0,
     val syncMessage: String? = null,
     val userMessage: String? = null
 )

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.lottoinsight.core.common.AppResult
 import com.example.lottoinsight.core.data.repository.LottoRepository
+import java.util.concurrent.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,7 +12,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.concurrent.CancellationException
 
 class DatabaseViewModel(
     private val lottoRepository: LottoRepository
@@ -56,13 +56,26 @@ class DatabaseViewModel(
             _uiState.update {
                 it.copy(
                     isSyncing = true,
+                    syncCompleted = 0,
+                    syncTotal = 0,
                     syncMessage = "공식 데이터를 확인하고 있습니다…",
                     userMessage = null
                 )
             }
 
             try {
-                when (lottoRepository.syncDraws()) {
+                when (
+                    lottoRepository.syncDraws { completed, total ->
+                        val percent = if (total <= 0) 0 else completed * 100 / total
+                        _uiState.update {
+                            it.copy(
+                                syncCompleted = completed,
+                                syncTotal = total,
+                                syncMessage = "동기화 중: $completed / $total ($percent%)"
+                            )
+                        }
+                    }
+                ) {
                     is AppResult.Success -> {
                         val after = lottoRepository.observeAllDraws().first()
                         val added = (after.size - before.size).coerceAtLeast(0)

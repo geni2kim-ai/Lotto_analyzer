@@ -25,24 +25,20 @@ class NumberGenerator(
 
             while (attempts < maxAttemptsPerGame) {
                 attempts++
-                val candidate = sampleSixNumbers(scores, activeRandom)
+                val candidate = weightedSample(scores, Constants.LOTTO_PICK_COUNT, activeRandom)
                 if (isValidGameCombination(candidate)) {
-                    pickedNumbers = candidate.sorted()
+                    pickedNumbers = candidate
                     break
                 }
             }
 
             if (pickedNumbers.isEmpty()) {
-                pickedNumbers = sampleSixNumbers(scores, activeRandom).sorted()
+                pickedNumbers = weightedSample(scores, Constants.LOTTO_PICK_COUNT, activeRandom)
             }
 
-            val gameScore = pickedNumbers.sumOf { scores[it] ?: 0.5 } / Constants.LOTTO_PICK_COUNT
+            val gameScore = pickedNumbers.sumOf { scores[it] ?: DEFAULT_WEIGHT } / Constants.LOTTO_PICK_COUNT
             val oddCnt = pickedNumbers.count { it % 2 != 0 }
-            var pairCnt = 0
-            val sorted = pickedNumbers.sorted()
-            for (i in 0 until sorted.size - 1) {
-                if (sorted[i + 1] - sorted[i] == 1) pairCnt++
-            }
+            val pairCnt = pickedNumbers.zipWithNext().count { (left, right) -> right - left == 1 }
 
             games.add(
                 LottoGame(
@@ -61,49 +57,51 @@ class NumberGenerator(
         return games
     }
 
-    private fun sampleSixNumbers(scores: Map<Int, Double>, activeRandom: Random): List<Int> {
-        val candidates = (Constants.LOTTO_MIN_NUMBER..Constants.LOTTO_MAX_NUMBER).toMutableList()
-        val picked = mutableSetOf<Int>()
-
-        while (picked.size < Constants.LOTTO_PICK_COUNT && candidates.isNotEmpty()) {
-            val selected = selectWeightedCandidate(candidates, scores, activeRandom)
-            candidates.remove(selected)
-            picked.add(selected)
-        }
-        return picked.toList()
-    }
-
-    private fun selectWeightedCandidate(
-        candidates: List<Int>,
+    internal fun weightedSample(
         scores: Map<Int, Double>,
+        count: Int,
         activeRandom: Random
-    ): Int {
-        val totalWeight = candidates.sumOf { scores[it] ?: 0.5 }
-        if (totalWeight <= 0.0) {
-            val randomIndex = activeRandom.nextInt(candidates.size)
-            return candidates[randomIndex]
-        }
-        val r = activeRandom.nextDouble() * totalWeight
-        var cumulative = 0.0
-        for (cand in candidates) {
-            cumulative += scores[cand] ?: 0.5
-            if (r <= cumulative) {
-                return cand
+    ): List<Int> {
+        require(count >= 0) { "count must not be negative" }
+        val candidates = Constants.ALL_NUMBERS.toMutableList()
+        val selected = mutableListOf<Int>()
+
+        repeat(minOf(count, candidates.size)) {
+            val weights = candidates.map { candidate ->
+                (scores[candidate] ?: DEFAULT_WEIGHT).coerceAtLeast(0.0)
             }
+            val totalWeight = weights.sum()
+
+            val selectedIndex = if (totalWeight <= 0.0) {
+                activeRandom.nextInt(candidates.size)
+            } else {
+                val threshold = activeRandom.nextDouble() * totalWeight
+                var cumulative = 0.0
+                var matchIndex = candidates.lastIndex
+                for (index in candidates.indices) {
+                    cumulative += weights[index]
+                    if (threshold <= cumulative) {
+                        matchIndex = index
+                        break
+                    }
+                }
+                matchIndex
+            }
+
+            selected += candidates.removeAt(selectedIndex)
         }
-        return candidates.last()
+
+        return selected.sorted()
     }
 
     private fun isValidGameCombination(numbers: List<Int>): Boolean {
         if (numbers.size != Constants.LOTTO_PICK_COUNT) return false
         if (numbers.distinct().size != Constants.LOTTO_PICK_COUNT) return false
-        val sorted = numbers.sorted()
-        var consecutiveCount = 0
-        for (i in 0 until sorted.size - 1) {
-            if (sorted[i + 1] - sorted[i] == 1) {
-                consecutiveCount++
-            }
-        }
+        val consecutiveCount = numbers.zipWithNext().count { (left, right) -> right - left == 1 }
         return consecutiveCount <= 3
+    }
+
+    private companion object {
+        const val DEFAULT_WEIGHT = 0.5
     }
 }

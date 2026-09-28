@@ -8,8 +8,8 @@ import com.example.lottoinsight.core.data.repository.ExpectedValueRepository
 import com.example.lottoinsight.core.data.repository.LottoRepository
 import com.example.lottoinsight.core.engine.calculator.FrequencyCalculator
 import com.example.lottoinsight.core.engine.calculator.PrizeIndexCalculator
-import com.example.lottoinsight.core.model.CalendarStatistics
 import com.example.lottoinsight.core.model.Draw
+import java.util.concurrent.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.concurrent.CancellationException
 
 class StatisticsViewModel(
     private val lottoRepository: LottoRepository,
@@ -52,13 +51,26 @@ class StatisticsViewModel(
             it.copy(
                 isSyncing = true,
                 isLoading = before.isEmpty(),
+                syncCompleted = 0,
+                syncTotal = 0,
                 syncMessage = "공식 당첨번호를 확인하고 있습니다…",
                 userMessage = null
             )
         }
 
         try {
-            when (lottoRepository.syncDraws()) {
+            when (
+                lottoRepository.syncDraws { completed, total ->
+                    val percent = if (total <= 0) 0 else completed * 100 / total
+                    _uiState.update {
+                        it.copy(
+                            syncCompleted = completed,
+                            syncTotal = total,
+                            syncMessage = "동기화 중: $completed / $total ($percent%)"
+                        )
+                    }
+                }
+            ) {
                 is AppResult.Success -> {
                     val after = lottoRepository.observeAllDraws().first()
                     val added = (after.size - before.size).coerceAtLeast(0)
@@ -114,24 +126,20 @@ class StatisticsViewModel(
 
     private fun computeStatistics(draws: List<Draw>) {
         if (draws.isEmpty()) {
-            _uiState.update { it.copy(isLoading = false, totalDrawsCount = 0, latestDrawNo = 0) }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    totalDrawsCount = 0,
+                    latestDrawNo = 0,
+                    calendarStats = null
+                )
+            }
             return
         }
 
         val frequencies = FrequencyCalculator.calculateFrequencies(draws)
         val parityRatio = calculateParityTotals(draws)
         val prizeIndexes = PrizeIndexCalculator.calculateHistoricalPrizeIndexes(draws)
-        val calStats = CalendarStatistics(
-            totalRounds = draws.size,
-            monthRangeCorrWithPrize = 0.0,
-            dayRangeCorrWithPrize = 0.0,
-            evenOddCorrWithPrize = 0.0,
-            consec2CorrWithPrize = 0.0,
-            consec3CorrWithPrize = 0.0,
-            monthRangeGroups = emptyList(),
-            evenOddGroups = emptyList(),
-            consecGroups = emptyList()
-        )
 
         _uiState.update {
             it.copy(
@@ -141,7 +149,7 @@ class StatisticsViewModel(
                 frequencyMap = frequencies,
                 oddEvenRatio = parityRatio,
                 prizeIndexes = prizeIndexes,
-                calendarStats = calStats
+                calendarStats = null
             )
         }
     }

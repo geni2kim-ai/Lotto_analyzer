@@ -4,6 +4,7 @@ import com.example.lottoinsight.core.common.AppError
 import com.example.lottoinsight.core.common.AppResult
 import com.example.lottoinsight.core.common.Constants
 import com.example.lottoinsight.core.engine.calculator.PrizeIndexCalculator
+import com.example.lottoinsight.core.engine.generator.NumberGenerator
 import com.example.lottoinsight.core.model.AnalysisResult
 import com.example.lottoinsight.core.model.Draw
 import com.example.lottoinsight.core.model.HistoricalPrizeIndex
@@ -17,16 +18,9 @@ interface AnalysisEngine {
     fun calculatePrizeIndexes(draws: List<Draw>): AppResult<List<HistoricalPrizeIndex>>
 }
 
-/**
- * Kotlin implementation of the Windows app's analysis pipeline.
- *
- * The important detail is that the individual feature distributions are
- * calculated from the selected historical draws, then candidate tickets are
- * ranked and diversified. This keeps Android results comparable to the
- * reference desktop app instead of only sampling six numbers from one scalar
- * score per number.
- */
-class AnalysisEngineImpl : AnalysisEngine {
+class AnalysisEngineImpl(
+    private val numberGenerator: NumberGenerator = NumberGenerator()
+) : AnalysisEngine {
 
     override fun analyzeAndGenerate(draws: List<Draw>, config: WeightConfig): AppResult<AnalysisResult> {
         if (draws.size < Constants.MIN_REQUIRED_DRAWS_FOR_ANALYSIS) {
@@ -61,7 +55,7 @@ class AnalysisEngineImpl : AnalysisEngine {
                 createdAt = System.currentTimeMillis(),
                 latestDrawNo = latestDrawNo,
                 recentN = effectiveRecentN,
-                gameCount = effectiveConfig.gameCount,
+                gameCount = games.size,
                 weightConfig = effectiveConfig,
                 games = games,
                 randomSeed = randomSeed,
@@ -157,7 +151,7 @@ class AnalysisEngineImpl : AnalysisEngine {
         val unique = linkedMapOf<List<Int>, LottoGame>()
         val attempts = maxOf(config.candidateCount, config.gameCount * 400)
         repeat(attempts) {
-            val ticket = weightedSample(baseWeights, Constants.LOTTO_PICK_COUNT, random)
+            val ticket = numberGenerator.weightedSample(baseWeights, Constants.LOTTO_PICK_COUNT, random)
             if (ticket !in unique) {
                 unique[ticket] = scoreTicket(ticket, stats, weights, prizeScores, config.usePrizeIndex)
             }
@@ -170,7 +164,7 @@ class AnalysisEngineImpl : AnalysisEngine {
             var bestAdjusted = Double.NEGATIVE_INFINITY
             remaining.take(1500).forEachIndexed { index, candidate ->
                 val overlap = if (selected.isEmpty()) 0 else selected.maxOf { chosen ->
-                    candidate.numbers.toSet().intersect(chosen.numbers.toSet()).size
+                    overlapCount(candidate.numbers, chosen.numbers)
                 }
                 val adjusted = candidate.totalScore - maxOf(0, overlap - 2) * 0.07
                 if (adjusted > bestAdjusted) {
@@ -179,9 +173,9 @@ class AnalysisEngineImpl : AnalysisEngine {
                 }
             }
             val chosen = remaining.removeAt(bestIndex)
-            val maxOverlap = if (selected.isEmpty()) 0 else selected.maxOf { prior ->
-                chosen.numbers.toSet().intersect(prior.numbers.toSet()).size
-            }
+            val maxOverlap = selected.maxOfOrNull { prior ->
+                overlapCount(chosen.numbers, prior.numbers)
+            } ?: 0
             selected += chosen.copy(
                 gameIndex = selected.size + 1,
                 maxOverlap = maxOverlap
@@ -189,7 +183,7 @@ class AnalysisEngineImpl : AnalysisEngine {
         }
 
         if (selected.size < config.gameCount) {
-            return selected + fallbackGames(baseWeights, stats, weights, prizeScores, config, random, selected.size)
+            return selected + fallbackGames(baseWeights, stats, weights, prizeScores, config, random, selected)
         }
         return selected
     }
@@ -201,16 +195,32 @@ class AnalysisEngineImpl : AnalysisEngine {
         prizeScores: Map<Int, Double>,
         config: WeightConfig,
         random: Random,
-        alreadySelected: Int
+        alreadySelected: List<LottoGame>
     ): List<LottoGame> {
         val fallback = mutableListOf<LottoGame>()
-        while (alreadySelected + fallback.size < config.gameCount) {
-            val ticket = weightedSample(baseWeights, Constants.LOTTO_PICK_COUNT, random)
+        val usedTickets = alreadySelected.mapTo(mutableSetOf()) { it.numbers }
+        val comparisonTickets = alreadySelected.map { it.numbers }.toMutableList()
+        var attempts = 0
+        val maxAttempts = maxOf(5_000, config.gameCount * 1_000)
+
+        while (alreadySelected.size + fallback.size < config.gameCount && attempts < maxAttempts) {
+            attempts++
+            val ticket = numberGenerator.weightedSample(baseWeights, Constants.LOTTO_PICK_COUNT, random)
+            if (!usedTickets.add(ticket)) continue
+
             val candidate = scoreTicket(ticket, stats, weights, prizeScores, config.usePrizeIndex)
-            fallback += candidate.copy(gameIndex = alreadySelected + fallback.size + 1)
+            val maxOverlap = comparisonTickets.maxOfOrNull { prior -> overlapCount(ticket, prior) } ?: 0
+            fallback += candidate.copy(
+                gameIndex = alreadySelected.size + fallback.size + 1,
+                maxOverlap = maxOverlap
+            )
+            comparisonTickets += ticket
         }
         return fallback
     }
+
+    private fun overlapCount(left: List<Int>, right: List<Int>): Int =
+        left.toSet().intersect(right.toSet()).size
 
     private fun scoreTicket(
         numbers: List<Int>,
@@ -244,27 +254,6 @@ class AnalysisEngineImpl : AnalysisEngine {
             oddCount = oddCount,
             pairCount = pairCount
         )
-    }
-
-    private fun weightedSample(weights: Map<Int, Double>, count: Int, random: Random): List<Int> {
-        val items = weights.keys.toMutableList()
-        val itemWeights = items.map { maxOf(1e-9, weights.getValue(it)) }.toMutableList()
-        val selected = mutableListOf<Int>()
-        repeat(minOf(count, items.size)) {
-            val total = itemWeights.sum()
-            val pick = random.nextDouble() * total
-            var cumulative = 0.0
-            var selectedIndex = items.lastIndex
-            itemWeights.forEachIndexed { index, weight ->
-                cumulative += weight
-                if (pick <= cumulative && selectedIndex == items.lastIndex) {
-                    selectedIndex = index
-                }
-            }
-            selected += items.removeAt(selectedIndex)
-            itemWeights.removeAt(selectedIndex)
-        }
-        return selected.sorted()
     }
 
     private fun numberCounter(): MutableMap<Int, Int> =

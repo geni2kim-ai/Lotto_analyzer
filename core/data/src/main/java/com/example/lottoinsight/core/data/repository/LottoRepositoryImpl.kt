@@ -85,9 +85,16 @@ class LottoRepositoryImpl(
         }
     }
 
-    override suspend fun syncDraws(): AppResult<Unit> {
+    override suspend fun syncDraws(
+        onProgress: ((completed: Int, total: Int) -> Unit)?
+    ): AppResult<Unit> {
         val existingCount = drawDao.getDrawCount()
-        return when (val fetchResult = remoteDataSource.fetchAllDraws(drawDao.getLatestDrawNo())) {
+        return when (
+            val fetchResult = remoteDataSource.fetchAllDraws(
+                existingMaxDrawNo = drawDao.getLatestDrawNo(),
+                onProgress = onProgress
+            )
+        ) {
             is AppResult.Success -> {
                 if (fetchResult.data.isEmpty()) {
                     if (existingCount > 0) AppResult.Success(Unit) else AppResult.Error(AppError.InsufficientData)

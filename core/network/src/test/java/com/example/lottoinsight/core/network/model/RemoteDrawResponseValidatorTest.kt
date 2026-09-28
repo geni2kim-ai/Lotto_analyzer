@@ -8,15 +8,15 @@ import org.junit.Test
 class RemoteDrawResponseValidatorTest {
 
     @Test
-    fun rejectsResponseForDifferentRequestedDraw() {
-        val error = RemoteDrawResponseValidator.validate(validDto(drwNo = 42), expectedDrawNo = 41)
+    fun legacyValidatorRejectsResponseForDifferentRequestedDraw() {
+        val error = LegacyRemoteDrawResponseValidator.validate(validDto(drwNo = 42), expectedDrawNo = 41)
 
         assertNotNull(error)
     }
 
     @Test
-    fun rejectsBonusNumberThatDuplicatesWinningNumber() {
-        val error = RemoteDrawResponseValidator.validate(
+    fun legacyValidatorRejectsBonusNumberThatDuplicatesWinningNumber() {
+        val error = LegacyRemoteDrawResponseValidator.validate(
             validDto(bnusNo = 6),
             expectedDrawNo = 42
         )
@@ -25,14 +25,14 @@ class RemoteDrawResponseValidatorTest {
     }
 
     @Test
-    fun acceptsValidResponseForRequestedDraw() {
-        val error = RemoteDrawResponseValidator.validate(validDto(), expectedDrawNo = 42)
+    fun legacyValidatorAcceptsValidResponseForRequestedDraw() {
+        val error = LegacyRemoteDrawResponseValidator.validate(validDto(), expectedDrawNo = 42)
 
         assertNull(error)
     }
 
     @Test
-    fun acceptsAndMapsNewOfficialApiResponse() {
+    fun newValidatorAcceptsAndMapsOfficialApiResponse() {
         val dto = NewRemoteDrawDto(
             ltEpsd = 42,
             tm1WnNo = 1,

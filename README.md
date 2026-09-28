@@ -4,6 +4,7 @@ Lotto Insight is a modern Android application designed for lottery number analys
 
 ## Overview
 - **Application ID**: `com.aimaestro.lottoanalyzer`
+- **Source namespace**: `com.example.lottoinsight` (retained for source/package compatibility; intentionally distinct from the install ID)
 - **Platform**: Android (Kotlin, Jetpack Compose, Android Architecture Components)
 - **Architecture**: Multi-module Clean Architecture (`app`, `core`, `feature`)
 - **Database**: Local Room Database (User preferences, historical statistics, generated combinations)
@@ -11,13 +12,13 @@ Lotto Insight is a modern Android application designed for lottery number analys
 ## Prerequisites
 - Android Studio Ladybug / Iguana or newer
 - JDK 17 or higher
-- Android SDK (API 34+ target)
+- Android SDK (API 36 target)
 
 ## Project Setup
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/geni2kim-ai/LottoInsightAndroid.git
-   cd LottoInsightAndroid
+   git clone https://github.com/geni2kim-ai/lotto_analyzer.git
+   cd lotto_analyzer
    ```
 2. **Local Properties Configuration**:
    - Copy `local.properties.example` to `local.properties`
