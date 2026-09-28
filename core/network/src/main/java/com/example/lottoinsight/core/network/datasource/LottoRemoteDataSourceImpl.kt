@@ -115,17 +115,6 @@ class LottoRemoteDataSourceImpl(
             if (result is AppResult.Success) null else drawNo
         }
 
-        if (successful.isEmpty() && failedDrawNos.isNotEmpty()) {
-            val firstError = results.firstNotNullOfOrNull { (_, result) ->
-                (result as? AppResult.Error)?.error
-            }
-            return if (firstError != null) {
-                AppResult.Error(firstError)
-            } else {
-                AppResult.Loading
-            }
-        }
-
         return AppResult.Success(
             DrawFetchReport(
                 successful = successful,

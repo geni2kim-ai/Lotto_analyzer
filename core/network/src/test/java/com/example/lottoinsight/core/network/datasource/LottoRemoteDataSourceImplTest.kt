@@ -37,6 +37,21 @@ class LottoRemoteDataSourceImplTest {
     }
 
     @Test
+    fun fetchDrawRangePreservesFailedDrawNumbersWhenEveryTargetFails() = runBlocking {
+        val service = FakeLottoApiService(failingDrawNos = setOf(1, 2, 3))
+        val dataSource = LottoRemoteDataSourceImpl(service)
+
+        val result = dataSource.fetchDrawRange(1, 3)
+
+        assertTrue(result is AppResult.Success)
+        val report = (result as AppResult.Success).data
+        assertTrue(report.successful.isEmpty())
+        assertEquals(listOf(1, 2, 3), report.failedDrawNos)
+        assertEquals(3, report.attemptedCount)
+        assertTrue(!report.isPartialSuccess)
+    }
+
+    @Test
     fun officialApiLatestDrawAllowsGapGreaterThanTwoHundred() = runBlocking {
         val service = FakeLottoApiService(
             allDraws = listOf(newDto(450))

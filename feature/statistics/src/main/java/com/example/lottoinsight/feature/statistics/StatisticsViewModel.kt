@@ -138,7 +138,7 @@ class StatisticsViewModel(
                 "동기화 완료: ${after.size}건 처리, 신규 ${added}건"
             }
         } else {
-            "부분 완료: ${report.successfulCount}/${report.attemptedCount}건 성공, " +
+            "부분 완료: 총 ${report.attemptedCount}건 중 ${report.successfulCount}건 성공, " +
                     "${failed.size}건 실패 (${formatDrawNos(failed)})"
         }
 

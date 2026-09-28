@@ -74,15 +74,18 @@ fun DatabaseScreen(viewModel: DatabaseViewModel) {
 
         if (uiState.isSyncing) {
             Spacer(modifier = Modifier.height(6.dp))
-            val progress = if (uiState.syncTotal > 0) {
-                (uiState.syncCompleted.toFloat() / uiState.syncTotal.toFloat()).coerceIn(0f, 1f)
+            if (uiState.syncTotal > 0) {
+                val progress = (uiState.syncCompleted.toFloat() / uiState.syncTotal.toFloat())
+                    .coerceIn(0f, 1f)
+                LinearProgressIndicator(
+                    progress = progress,
+                    modifier = Modifier.fillMaxWidth()
+                )
             } else {
-                0f
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
-            LinearProgressIndicator(
-                progress = progress,
-                modifier = Modifier.fillMaxWidth()
-            )
         }
 
         uiState.userMessage?.let {
