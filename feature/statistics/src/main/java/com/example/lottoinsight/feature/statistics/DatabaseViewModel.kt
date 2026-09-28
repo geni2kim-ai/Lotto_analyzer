@@ -181,7 +181,7 @@ class DatabaseViewModel(
             if (retry) {
                 "재시도 완료: ${report.successfulCount}건 복구"
             } else {
-                "동기화 완료: ${after.size}건 처리, 신규 $added건"
+                "동기화 완료: ${after.size}건 처리, 신규 ${added}건"
             }
         } else {
             "부분 완료: 총 ${report.attemptedCount}건 중 ${report.successfulCount}건 성공, " +
