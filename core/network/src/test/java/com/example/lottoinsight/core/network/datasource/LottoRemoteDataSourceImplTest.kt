@@ -8,6 +8,8 @@ import com.example.lottoinsight.core.network.model.RemoteDrawListData
 import com.example.lottoinsight.core.network.model.RemoteDrawListResponse
 import java.io.IOException
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import okhttp3.ResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -79,6 +81,48 @@ class LottoRemoteDataSourceImplTest {
     }
 
     @Test
+    fun incrementalDiscoveryIOExceptionFallsBackToFullListWithoutRetryLoop() = runBlocking {
+        val service = FakeLottoApiService(
+            failingDrawNos = setOf(101),
+            allDraws = listOf(newDto(101), newDto(102)),
+            maxAvailableDrawNo = 102
+        )
+        val dataSource = LottoRemoteDataSourceImpl(service)
+
+        val result = withTimeout(1_000) {
+            dataSource.fetchAllDraws(existingMaxDrawNo = 100)
+        }
+
+        assertTrue(result is AppResult.Success)
+        val report = (result as AppResult.Success).data
+        assertEquals(listOf(101, 102), report.successful.map { it.drawNo })
+        assertEquals(1, service.allQueryCalls)
+        assertEquals(1, service.exactQueryCalls)
+        assertEquals(0, service.legacyQueryCalls)
+    }
+
+    @Test
+    fun incrementalDiscoveryHttp500IsUnavailableAndFallsBackToFullList() = runBlocking {
+        val service = FakeLottoApiService(
+            httpErrorDrawNos = setOf(101),
+            allDraws = listOf(newDto(101)),
+            maxAvailableDrawNo = 101
+        )
+        val dataSource = LottoRemoteDataSourceImpl(service)
+
+        val result = withTimeout(1_000) {
+            dataSource.fetchAllDraws(existingMaxDrawNo = 100)
+        }
+
+        assertTrue(result is AppResult.Success)
+        val report = (result as AppResult.Success).data
+        assertEquals(listOf(101), report.successful.map { it.drawNo })
+        assertEquals(1, service.allQueryCalls)
+        assertEquals(1, service.exactQueryCalls)
+        assertEquals(0, service.legacyQueryCalls)
+    }
+
+    @Test
     fun officialApiLatestDrawAllowsGapGreaterThanTwoHundred() = runBlocking {
         val service = FakeLottoApiService(
             allDraws = listOf(newDto(450))
@@ -94,6 +138,7 @@ class LottoRemoteDataSourceImplTest {
 
     private class FakeLottoApiService(
         private val failingDrawNos: Set<Int> = emptySet(),
+        private val httpErrorDrawNos: Set<Int> = emptySet(),
         private val allDraws: List<NewRemoteDrawDto> = emptyList(),
         private val maxAvailableDrawNo: Int = Int.MAX_VALUE
     ) : LottoApiService {
@@ -146,6 +191,12 @@ class LottoRemoteDataSourceImplTest {
             val drawNo = drawQuery.toInt()
             if (drawNo in failingDrawNos) {
                 throw IOException("simulated new-api failure for $drawNo")
+            }
+            if (drawNo in httpErrorDrawNos) {
+                return Response.error(
+                    500,
+                    ResponseBody.create(null, "simulated server error")
+                )
             }
             if (drawNo > maxAvailableDrawNo) {
                 return Response.success(

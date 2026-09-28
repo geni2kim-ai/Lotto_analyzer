@@ -28,3 +28,11 @@ pattern in tracked Kotlin source.
 
 Braces are also recommended whenever adjacent text could make the identifier
 boundary visually ambiguous, even when the compiler would currently accept it.
+
+
+### Checker scope
+
+The checker scans Kotlin source code and skips comment-only lines, including
+KDoc/block-comment bodies and `//` comment lines. This avoids false positives
+from documentation examples. Inline comments that share a line with executable
+code are still scanned; keep braced interpolation in those lines as well.
