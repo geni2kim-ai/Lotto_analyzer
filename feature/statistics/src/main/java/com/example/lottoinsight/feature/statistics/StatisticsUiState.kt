@@ -15,6 +15,8 @@ data class StatisticsUiState(
     val syncCompleted: Int = 0,
     val syncTotal: Int = 0,
     val syncMessage: String? = null,
+    val syncFailed: Boolean = false,
+    val syncFailedDrawNos: List<Int> = emptyList(),
     val isExpectedValueSaving: Boolean = false,
     val expectedValueRecentN: Int = 100,
     val expectedValueRunId: Long? = null,

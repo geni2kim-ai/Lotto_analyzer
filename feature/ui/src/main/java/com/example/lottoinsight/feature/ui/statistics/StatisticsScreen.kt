@@ -14,7 +14,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -63,11 +65,48 @@ fun StatisticsScreen(viewModel: StatisticsViewModel) {
         }
 
         uiState.syncMessage?.let {
-            Text(text = it, color = MaterialTheme.colorScheme.primary)
+            Text(
+                text = it,
+                color = if (uiState.syncFailed) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.primary
+                }
+            )
         }
+
+        if (uiState.isSyncing) {
+            Spacer(modifier = Modifier.height(6.dp))
+            val progress = if (uiState.syncTotal > 0) {
+                (uiState.syncCompleted.toFloat() / uiState.syncTotal.toFloat()).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+            LinearProgressIndicator(
+                progress = progress,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
         uiState.userMessage?.let {
             Text(text = it, color = MaterialTheme.colorScheme.error)
         }
+
+        if (uiState.syncFailed && !uiState.isSyncing) {
+            OutlinedButton(
+                onClick = viewModel::retrySync,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    if (uiState.syncFailedDrawNos.isEmpty()) {
+                        "동기화 다시 시도"
+                    } else {
+                        "실패한 ${uiState.syncFailedDrawNos.size}개 회차 다시 시도"
+                    }
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
 
         if (uiState.isLoading) {
@@ -130,7 +169,8 @@ fun StatisticsScreen(viewModel: StatisticsViewModel) {
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    text = "평균 1등 ${item.averageFirstPrize.toLong().let { "%,d원".format(it) }} · 점수 ${"%.3f".format(item.normalizedScore)}",
+                                    text = "평균 1등 ${item.averageFirstPrize.toLong().let { "%,d원".format(it) }} · " +
+                                            "유효 표본 ${item.prizeSampleCount}회 · 점수 ${"%.3f".format(item.normalizedScore)}",
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }

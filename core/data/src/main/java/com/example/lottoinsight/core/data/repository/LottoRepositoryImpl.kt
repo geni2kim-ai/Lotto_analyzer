@@ -5,6 +5,7 @@ import com.example.lottoinsight.core.common.AppResult
 import com.example.lottoinsight.core.database.dao.DrawDao
 import com.example.lottoinsight.core.database.entity.DrawEntity
 import com.example.lottoinsight.core.model.Draw
+import com.example.lottoinsight.core.network.datasource.DrawFetchReport
 import com.example.lottoinsight.core.network.datasource.LottoRemoteDataSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -51,43 +52,22 @@ class LottoRepositoryImpl(
         }
 
         val latestLocalDrawNo = drawDao.getLatestDrawNo() ?: 0
-        var savedCount = 0
-        var firstError: AppError? = null
+        val startDrawNo = latestLocalDrawNo + 1
+        val endDrawNo = latestLocalDrawNo + fetchCount
 
-        for (i in 0 until fetchCount) {
-            val targetDrawNo = latestLocalDrawNo + 1 + i
-            when (val result = fetchAndPersistSingleDraw(targetDrawNo)) {
-                is AppResult.Success -> savedCount++
-                is AppResult.Error -> {
-                    firstError = result.error
-                    break
-                }
-                is AppResult.Loading -> return AppResult.Loading
-            }
-        }
-
-        return if (savedCount == 0 && firstError != null) {
-            AppResult.Error(firstError)
-        } else {
-            AppResult.Success(savedCount)
-        }
-    }
-
-    private suspend fun fetchAndPersistSingleDraw(targetDrawNo: Int): AppResult<Unit> {
-        return when (val result = remoteDataSource.fetchDraw(targetDrawNo)) {
+        return when (val result = remoteDataSource.fetchDrawRange(startDrawNo, endDrawNo)) {
             is AppResult.Success -> {
-                val entity = DrawEntity.fromDomain(result.data)
-                drawDao.upsertDraws(listOf(entity))
-                AppResult.Success(Unit)
+                persistSuccessful(result.data)
+                AppResult.Success(result.data.successful.size)
             }
-            is AppResult.Error -> result
+            is AppResult.Error -> AppResult.Error(result.error)
             is AppResult.Loading -> AppResult.Loading
         }
     }
 
     override suspend fun syncDraws(
         onProgress: ((completed: Int, total: Int) -> Unit)?
-    ): AppResult<Unit> {
+    ): AppResult<DrawSyncReport> {
         val existingCount = drawDao.getDrawCount()
         return when (
             val fetchResult = remoteDataSource.fetchAllDraws(
@@ -96,15 +76,48 @@ class LottoRepositoryImpl(
             )
         ) {
             is AppResult.Success -> {
-                if (fetchResult.data.isEmpty()) {
-                    if (existingCount > 0) AppResult.Success(Unit) else AppResult.Error(AppError.InsufficientData)
+                val report = fetchResult.data
+                persistSuccessful(report)
+
+                if (report.successful.isEmpty() && report.failedDrawNos.isEmpty() && existingCount == 0) {
+                    AppResult.Error(AppError.InsufficientData)
                 } else {
-                    drawDao.upsertDraws(fetchResult.data.map(DrawEntity::fromDomain))
-                    AppResult.Success(Unit)
+                    AppResult.Success(report.toSyncReport())
                 }
             }
             is AppResult.Error -> AppResult.Error(fetchResult.error)
             is AppResult.Loading -> AppResult.Loading
         }
     }
+
+    override suspend fun retryDraws(
+        drawNos: List<Int>,
+        onProgress: ((completed: Int, total: Int) -> Unit)?
+    ): AppResult<DrawSyncReport> {
+        val targets = drawNos.filter { it > 0 }.distinct().sorted()
+        if (targets.isEmpty()) {
+            return AppResult.Success(DrawSyncReport(0, emptyList()))
+        }
+
+        return when (val fetchResult = remoteDataSource.fetchDraws(targets, onProgress)) {
+            is AppResult.Success -> {
+                persistSuccessful(fetchResult.data)
+                AppResult.Success(fetchResult.data.toSyncReport())
+            }
+            is AppResult.Error -> AppResult.Error(fetchResult.error)
+            is AppResult.Loading -> AppResult.Loading
+        }
+    }
+
+    private suspend fun persistSuccessful(report: DrawFetchReport) {
+        if (report.successful.isNotEmpty()) {
+            drawDao.upsertDraws(report.successful.map(DrawEntity::fromDomain))
+        }
+    }
+
+    private fun DrawFetchReport.toSyncReport(): DrawSyncReport =
+        DrawSyncReport(
+            successfulCount = successful.size,
+            failedDrawNos = failedDrawNos
+        )
 }

@@ -9,7 +9,13 @@ interface LottoRepository {
     fun observeLatestDraw(): Flow<Draw?>
     suspend fun getDrawByNo(drawNo: Int): AppResult<Draw>
     suspend fun fetchAndSaveLatestDraws(fetchCount: Int = 10): AppResult<Int>
+
     suspend fun syncDraws(
         onProgress: ((completed: Int, total: Int) -> Unit)? = null
-    ): AppResult<Unit>
+    ): AppResult<DrawSyncReport>
+
+    suspend fun retryDraws(
+        drawNos: List<Int>,
+        onProgress: ((completed: Int, total: Int) -> Unit)? = null
+    ): AppResult<DrawSyncReport>
 }

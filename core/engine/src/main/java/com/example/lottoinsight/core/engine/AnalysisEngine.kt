@@ -73,7 +73,7 @@ class AnalysisEngineImpl(
         return AppResult.Success(PrizeIndexCalculator.calculateHistoricalPrizeIndexes(draws))
     }
 
-    private data class AnalysisStats(
+    internal data class AnalysisStats(
         val frequency: Map<Int, Double>,
         val consecutiveInvolvement: Map<Int, Double>,
         val consecutivePairPattern: Map<Int, Double>,
@@ -81,7 +81,7 @@ class AnalysisEngineImpl(
         val oddShare: Double
     )
 
-    private fun buildStats(draws: List<Draw>): AnalysisStats {
+    internal fun buildStats(draws: List<Draw>): AnalysisStats {
         val frequency = numberCounter()
         val consecutiveInvolvement = numberCounter()
         val pairPattern = mutableMapOf<Int, Int>()
@@ -188,7 +188,7 @@ class AnalysisEngineImpl(
         return selected
     }
 
-    private fun fallbackGames(
+    internal fun fallbackGames(
         baseWeights: Map<Int, Double>,
         stats: AnalysisStats,
         weights: Map<String, Double>,

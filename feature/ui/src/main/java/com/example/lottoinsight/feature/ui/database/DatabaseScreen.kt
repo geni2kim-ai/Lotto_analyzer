@@ -14,7 +14,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -60,11 +62,48 @@ fun DatabaseScreen(viewModel: DatabaseViewModel) {
             fontWeight = FontWeight.SemiBold
         )
         uiState.syncMessage?.let {
-            Text(text = it, color = MaterialTheme.colorScheme.primary)
+            Text(
+                text = it,
+                color = if (uiState.syncFailed) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.primary
+                }
+            )
         }
+
+        if (uiState.isSyncing) {
+            Spacer(modifier = Modifier.height(6.dp))
+            val progress = if (uiState.syncTotal > 0) {
+                (uiState.syncCompleted.toFloat() / uiState.syncTotal.toFloat()).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+            LinearProgressIndicator(
+                progress = progress,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
         uiState.userMessage?.let {
             Text(text = it, color = MaterialTheme.colorScheme.error)
         }
+
+        if (uiState.syncFailed && !uiState.isSyncing) {
+            OutlinedButton(
+                onClick = viewModel::retrySync,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    if (uiState.syncFailedDrawNos.isEmpty()) {
+                        "동기화 다시 시도"
+                    } else {
+                        "실패한 ${uiState.syncFailedDrawNos.size}개 회차 다시 시도"
+                    }
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
 
         if (uiState.isLoading) {
@@ -95,7 +134,8 @@ fun DatabaseScreen(viewModel: DatabaseViewModel) {
                             }
                             LottoBallRow(numbers = draw.numbers.sorted(), ballSize = 30.dp)
                             Text(
-                                text = "보너스 ${draw.bonus} · 1등 ${draw.firstWinners ?: "-"}명 · ${draw.firstPrize?.let { "%,d원".format(it) } ?: "-"}",
+                                text = "보너스 ${draw.bonus} · 1등 ${draw.firstWinners ?: "-"}명 · " +
+                                        "${draw.firstPrize?.let { "%,d원".format(it) } ?: "-"}",
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }

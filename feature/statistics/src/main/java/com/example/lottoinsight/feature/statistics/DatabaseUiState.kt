@@ -11,5 +11,7 @@ data class DatabaseUiState(
     val syncCompleted: Int = 0,
     val syncTotal: Int = 0,
     val syncMessage: String? = null,
+    val syncFailed: Boolean = false,
+    val syncFailedDrawNos: List<Int> = emptyList(),
     val userMessage: String? = null
 )

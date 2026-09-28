@@ -4,7 +4,7 @@ import com.example.lottoinsight.core.common.Constants
 import com.example.lottoinsight.core.model.LottoGame
 import java.util.Random
 
-class NumberGenerator(
+open class NumberGenerator(
     private val random: Random = Random()
 ) {
 
@@ -57,7 +57,7 @@ class NumberGenerator(
         return games
     }
 
-    internal fun weightedSample(
+    internal open fun weightedSample(
         scores: Map<Int, Double>,
         count: Int,
         activeRandom: Random

@@ -40,7 +40,7 @@ class LottoRemoteDataSourceImpl(
     override suspend fun fetchAllDraws(
         existingMaxDrawNo: Int?,
         onProgress: ((completed: Int, total: Int) -> Unit)?
-    ): AppResult<List<Draw>> {
+    ): AppResult<DrawFetchReport> {
         val primaryResult = try {
             val response = apiService.getDraws(
                 drawQuery = "all",
@@ -66,7 +66,9 @@ class LottoRemoteDataSourceImpl(
         val latest = (latestResult as? AppResult.Success)?.data
             ?: return primaryResult
         val start = (existingMaxDrawNo ?: 0) + 1
-        if (start > latest) return AppResult.Success(emptyList())
+        if (start > latest) {
+            return AppResult.Success(DrawFetchReport(emptyList(), emptyList()))
+        }
         return fetchDrawRange(start, latest, onProgress)
     }
 
@@ -74,18 +76,28 @@ class LottoRemoteDataSourceImpl(
         startDrawNo: Int,
         endDrawNo: Int,
         onProgress: ((completed: Int, total: Int) -> Unit)?
-    ): AppResult<List<Draw>> {
+    ): AppResult<DrawFetchReport> {
         if (startDrawNo <= 0 || endDrawNo < startDrawNo) {
-            return AppResult.Success(emptyList())
+            return AppResult.Success(DrawFetchReport(emptyList(), emptyList()))
+        }
+        return fetchDraws((startDrawNo..endDrawNo).toList(), onProgress)
+    }
+
+    override suspend fun fetchDraws(
+        drawNos: List<Int>,
+        onProgress: ((completed: Int, total: Int) -> Unit)?
+    ): AppResult<DrawFetchReport> {
+        val targets = drawNos.filter { it > 0 }.distinct().sorted()
+        if (targets.isEmpty()) {
+            return AppResult.Success(DrawFetchReport(emptyList(), emptyList()))
         }
 
-        val drawNumbers = (startDrawNo..endDrawNo).toList()
-        val total = drawNumbers.size
+        val total = targets.size
         val completed = AtomicInteger(0)
         val semaphore = Semaphore(MAX_CONCURRENT_FALLBACK_REQUESTS)
 
         val results = coroutineScope {
-            drawNumbers.map { drawNo ->
+            targets.map { drawNo ->
                 async {
                     val result = semaphore.withPermit { fetchDraw(drawNo) }
                     val done = completed.incrementAndGet()
@@ -95,16 +107,31 @@ class LottoRemoteDataSourceImpl(
             }.awaitAll()
         }.sortedBy { it.first }
 
-        val firstError = results.firstNotNullOfOrNull { (_, result) ->
-            (result as? AppResult.Error)?.error
-        }
-        if (firstError != null) return AppResult.Error(firstError)
-        if (results.any { (_, result) -> result is AppResult.Loading }) return AppResult.Loading
-
-        val draws = results.mapNotNull { (_, result) ->
+        val successful = results.mapNotNull { (_, result) ->
             (result as? AppResult.Success)?.data
+        }.distinctBy { it.drawNo }.sortedBy { it.drawNo }
+
+        val failedDrawNos = results.mapNotNull { (drawNo, result) ->
+            if (result is AppResult.Success) null else drawNo
         }
-        return AppResult.Success(draws.distinctBy { it.drawNo }.sortedBy { it.drawNo })
+
+        if (successful.isEmpty() && failedDrawNos.isNotEmpty()) {
+            val firstError = results.firstNotNullOfOrNull { (_, result) ->
+                (result as? AppResult.Error)?.error
+            }
+            return if (firstError != null) {
+                AppResult.Error(firstError)
+            } else {
+                AppResult.Loading
+            }
+        }
+
+        return AppResult.Success(
+            DrawFetchReport(
+                successful = successful,
+                failedDrawNos = failedDrawNos
+            )
+        )
     }
 
     override suspend fun fetchLatestDrawNo(existingMaxDrawNo: Int?): AppResult<Int> {
@@ -116,7 +143,7 @@ class LottoRemoteDataSourceImpl(
             if (response.isSuccessful) {
                 response.body()?.data?.list.orEmpty()
                     .mapNotNull { it.ltEpsd }
-                    .filter { isPlausibleLatest(it, existingMaxDrawNo) }
+                    .filter { isOfficialLatestPlausible(it, existingMaxDrawNo) }
                     .maxOrNull()
             } else {
                 null
@@ -144,7 +171,7 @@ class LottoRemoteDataSourceImpl(
                     .toList()
             }
             val latest = candidates
-                .filter { isPlausibleLatest(it, existingMaxDrawNo) }
+                .filter { isHtmlLatestPlausible(it, existingMaxDrawNo) }
                 .maxOrNull()
                 ?: return AppResult.Error(AppError.ParseError("Latest draw number was not found in a plausible range"))
             AppResult.Success(latest)
@@ -157,11 +184,16 @@ class LottoRemoteDataSourceImpl(
         }
     }
 
-    private fun isPlausibleLatest(candidate: Int, existingMaxDrawNo: Int?): Boolean {
+    private fun isOfficialLatestPlausible(candidate: Int, existingMaxDrawNo: Int?): Boolean {
         if (candidate !in 1..MAX_PLAUSIBLE_DRAW_NO) return false
         val existing = existingMaxDrawNo?.takeIf { it > 0 } ?: return true
-        if (candidate < existing) return false
-        return candidate - existing <= MAX_REASONABLE_SYNC_GAP
+        return candidate >= existing
+    }
+
+    private fun isHtmlLatestPlausible(candidate: Int, existingMaxDrawNo: Int?): Boolean {
+        if (!isOfficialLatestPlausible(candidate, existingMaxDrawNo)) return false
+        val existing = existingMaxDrawNo?.takeIf { it > 0 } ?: return true
+        return candidate - existing <= MAX_REASONABLE_HTML_SYNC_GAP
     }
 
     private suspend fun fetchFromNewApi(drawNo: Int): AppResult<Draw> {
@@ -203,7 +235,7 @@ class LottoRemoteDataSourceImpl(
     private fun mapNewDraws(
         items: List<NewRemoteDrawDto>,
         onProgress: ((completed: Int, total: Int) -> Unit)?
-    ): AppResult<List<Draw>> {
+    ): AppResult<DrawFetchReport> {
         if (items.isEmpty()) {
             return AppResult.Error(AppError.ParseError("No draw data was returned by the new API"))
         }
@@ -225,7 +257,12 @@ class LottoRemoteDataSourceImpl(
             runCatching { onProgress?.invoke(index + 1, total) }
         }
 
-        return AppResult.Success(drawsByNumber.values.sortedBy { it.drawNo })
+        return AppResult.Success(
+            DrawFetchReport(
+                successful = drawsByNumber.values.sortedBy { it.drawNo },
+                failedDrawNos = emptyList()
+            )
+        )
     }
 
     private fun mapNewDraw(item: NewRemoteDrawDto, expectedDrawNo: Int): AppResult<Draw> {
@@ -262,7 +299,7 @@ class LottoRemoteDataSourceImpl(
 
     private companion object {
         const val MAX_CONCURRENT_FALLBACK_REQUESTS = 6
-        const val MAX_REASONABLE_SYNC_GAP = 200
+        const val MAX_REASONABLE_HTML_SYNC_GAP = 200
         const val MAX_PLAUSIBLE_DRAW_NO = 5000
     }
 }
