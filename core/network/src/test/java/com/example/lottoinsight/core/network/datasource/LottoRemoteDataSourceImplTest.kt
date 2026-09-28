@@ -60,6 +60,7 @@ class LottoRemoteDataSourceImplTest {
         assertTrue(report.failedDrawNos.isEmpty())
         assertEquals(0, service.allQueryCalls)
         assertEquals(0, service.resultPageCalls)
+        assertEquals(0, service.legacyQueryCalls)
         assertTrue(service.exactQueryCalls > 0)
     }
 
@@ -102,8 +103,11 @@ class LottoRemoteDataSourceImplTest {
             private set
         var exactQueryCalls: Int = 0
             private set
+        var legacyQueryCalls: Int = 0
+            private set
 
         override suspend fun getDraw(drawNo: Int): Response<RemoteDrawDto> {
+            legacyQueryCalls++
             if (drawNo in failingDrawNos) {
                 throw IOException("simulated legacy failure for $drawNo")
             }

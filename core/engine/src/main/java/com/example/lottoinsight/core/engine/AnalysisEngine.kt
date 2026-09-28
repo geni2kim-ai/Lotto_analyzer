@@ -76,21 +76,26 @@ class AnalysisEngineImpl(
     }
 
     /**
-     * Reproducibility policy: the seed is derived from every input that can
-     * affect generated games. The same draw data, effective config and
-     * algorithm version therefore produce the same seed and recommendations.
-     * The seed is also persisted with the analysis run and surfaced in UI.
+     * Reproducibility policy: the seed is derived from the actual applied
+     * analysis inputs. [effectiveConfig.recentN] is the applied recent-N after
+     * clamping the user's requested recent-N to the available draw count, and
+     * [draws] is the exact target-draw set used by scoring/generation.
+     *
+     * The same applied config, target draws and algorithm version therefore
+     * produce the same seed and recommendations. The original oversized
+     * recent-N request is intentionally not distinguished once it clamps to
+     * the same applied recent-N.
      */
-    internal fun deterministicSeed(draws: List<Draw>, config: WeightConfig): Long {
+    internal fun deterministicSeed(draws: List<Draw>, effectiveConfig: WeightConfig): Long {
         val canonical = buildString {
             append(Constants.ALGORITHM_VERSION)
-            append('|').append(config.frequencyWeight)
-            append('|').append(config.consecutiveWeight)
-            append('|').append(config.parityWeight)
-            append('|').append(config.usePrizeIndex)
-            append('|').append(config.recentN)
-            append('|').append(config.gameCount)
-            append('|').append(config.candidateCount)
+            append('|').append(effectiveConfig.frequencyWeight)
+            append('|').append(effectiveConfig.consecutiveWeight)
+            append('|').append(effectiveConfig.parityWeight)
+            append('|').append(effectiveConfig.usePrizeIndex)
+            append('|').append(effectiveConfig.recentN)
+            append('|').append(effectiveConfig.gameCount)
+            append('|').append(effectiveConfig.candidateCount)
             draws.sortedBy { it.drawNo }.forEach { draw ->
                 append('|').append(draw.drawNo)
                 append(':').append(draw.numbers.sorted().joinToString(","))

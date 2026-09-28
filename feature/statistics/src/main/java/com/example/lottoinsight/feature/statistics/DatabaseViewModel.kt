@@ -61,6 +61,7 @@ class DatabaseViewModel(
         _uiState.update {
             it.copy(
                 searchQuery = query.filter(Char::isDigit).take(MAX_DRAW_QUERY_LENGTH),
+                searchResult = null,
                 searchMessage = null
             )
         }

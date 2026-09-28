@@ -36,6 +36,9 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
 
+      - name: Check Kotlin interpolation convention
+        run: python3 tools/check_kotlin_interpolation.py
+
       - name: Assemble debug
         run: ./gradlew --no-daemon assembleDebug
 

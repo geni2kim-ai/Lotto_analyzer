@@ -37,7 +37,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -57,7 +56,9 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
     val context = LocalContext.current
     val result = uiState.latestAnalysisResult
     var configExpanded by rememberSaveable { mutableStateOf(true) }
-    val expandedGames = remember { mutableStateMapOf<Int, Boolean>() }
+    var expandedGameIds by rememberSaveable(result?.randomSeed) {
+        mutableStateOf(intArrayOf())
+    }
 
     LaunchedEffect(result?.randomSeed) {
         if (result != null) configExpanded = false
@@ -160,7 +161,7 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 items(analysis.games, key = { it.gameIndex }) { game ->
-                    val detailsExpanded = expandedGames[game.gameIndex] == true
+                    val detailsExpanded = game.gameIndex in expandedGameIds
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -182,7 +183,11 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                             )
                             TextButton(
                                 onClick = {
-                                    expandedGames[game.gameIndex] = !detailsExpanded
+                                    expandedGameIds = if (detailsExpanded) {
+                                        expandedGameIds.filterNot { it == game.gameIndex }.toIntArray()
+                                    } else {
+                                        expandedGameIds + game.gameIndex
+                                    }
                                 }
                             ) {
                                 Icon(

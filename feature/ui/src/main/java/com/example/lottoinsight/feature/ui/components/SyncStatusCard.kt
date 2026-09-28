@@ -56,12 +56,7 @@ fun SyncStatusCard(
     }
 
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .semantics(mergeDescendants = true) {
-                liveRegion = LiveRegionMode.Polite
-                stateDescription = announcement
-            }
+        modifier = modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
@@ -69,7 +64,16 @@ fun SyncStatusCard(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics(mergeDescendants = true) {
+                        liveRegion = LiveRegionMode.Polite
+                        stateDescription = announcement
+                    },
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -124,6 +128,8 @@ fun SyncStatusCard(
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
+            }
+
             }
 
             if (isFailed && !isSyncing) {

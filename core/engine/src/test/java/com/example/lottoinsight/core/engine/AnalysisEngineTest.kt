@@ -79,6 +79,30 @@ class AnalysisEngineTest {
     }
 
     @Test
+    fun oversizedRequestedRecentNMatchesSameAppliedRecentNSeed() {
+        val draws = diverseDraws(12)
+        val engine = AnalysisEngineImpl()
+        val oversizedRequest = WeightConfig(
+            recentN = 100,
+            gameCount = 3,
+            candidateCount = 120,
+            usePrizeIndex = true
+        )
+        val exactAppliedRequest = oversizedRequest.copy(recentN = draws.size)
+
+        val oversized = (
+            engine.analyzeAndGenerate(draws, oversizedRequest) as AppResult.Success
+        ).data
+        val exactApplied = (
+            engine.analyzeAndGenerate(draws, exactAppliedRequest) as AppResult.Success
+        ).data
+
+        assertEquals(draws.size, oversized.recentN)
+        assertEquals(oversized.randomSeed, exactApplied.randomSeed)
+        assertEquals(oversized.games, exactApplied.games)
+    }
+
+    @Test
     fun fallbackGamesRejectsDuplicatesAndTracksOverlapAgainstEarlierFallbacks() {
         val existingTicket = listOf(1, 2, 3, 4, 5, 6)
         val firstFallback = listOf(1, 7, 13, 19, 25, 31)

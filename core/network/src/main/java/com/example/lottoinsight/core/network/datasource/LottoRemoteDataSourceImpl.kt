@@ -167,10 +167,14 @@ class LottoRemoteDataSourceImpl(
     }
 
     /**
-     * Fast path for an existing database. It probes exact draw numbers using
-     * exponential search and then binary search. Missing-draw InvalidDraw is a
-     * boundary signal; transport/parser/server failures return null so the
-     * caller can fall back to the established full-list path.
+     * Fast path for an existing database. Boundary discovery intentionally
+     * probes only the structured new API and never falls back to the legacy
+     * endpoint. A normal empty exact-query response is the future-boundary
+     * signal. Transport/server/parser anomalies return null so the caller can
+     * use the established full-list fallback rather than guessing a boundary.
+     *
+     * Actual draw payload collection still uses [fetchDraw], including its
+     * legacy fallback. The lightweight policy is limited to boundary probes.
      */
     private suspend fun discoverLatestIncrementally(existingMaxDrawNo: Int): Int? {
         if (existingMaxDrawNo !in 1..MAX_PLAUSIBLE_DRAW_NO) return null
@@ -185,20 +189,17 @@ class LottoRemoteDataSourceImpl(
                 return lowerBound
             }
             val candidate = candidateLong.toInt()
-            when (val result = fetchDraw(candidate)) {
-                is AppResult.Success -> {
+            when (probeDrawAvailability(candidate)) {
+                DrawAvailability.PRESENT -> {
                     lowerBound = candidate
                     if (candidate == MAX_PLAUSIBLE_DRAW_NO) return candidate
                     step = (step * 2).coerceAtMost(MAX_PLAUSIBLE_DRAW_NO)
                 }
-                is AppResult.Error -> {
-                    if (isMissingDrawError(result.error, candidate)) {
-                        upperBound = candidate
-                        break
-                    }
-                    return null
+                DrawAvailability.MISSING -> {
+                    upperBound = candidate
+                    break
                 }
-                is AppResult.Loading -> return null
+                DrawAvailability.UNAVAILABLE -> return null
             }
         }
 
@@ -206,23 +207,47 @@ class LottoRemoteDataSourceImpl(
         var low = lowerBound
         while (low + 1 < high) {
             val mid = low + (high - low) / 2
-            when (val result = fetchDraw(mid)) {
-                is AppResult.Success -> low = mid
-                is AppResult.Error -> {
-                    if (isMissingDrawError(result.error, mid)) {
-                        high = mid
-                    } else {
-                        return null
-                    }
-                }
-                is AppResult.Loading -> return null
+            when (probeDrawAvailability(mid)) {
+                DrawAvailability.PRESENT -> low = mid
+                DrawAvailability.MISSING -> high = mid
+                DrawAvailability.UNAVAILABLE -> return null
             }
         }
         return low
     }
 
-    private fun isMissingDrawError(error: AppError, requestedDrawNo: Int): Boolean =
-        error is AppError.InvalidDraw && error.drawNo == requestedDrawNo
+    private suspend fun probeDrawAvailability(drawNo: Int): DrawAvailability {
+        return try {
+            val response = apiService.getDraws(
+                drawQuery = drawNo.toString(),
+                cacheBuster = System.currentTimeMillis()
+            )
+            if (!response.isSuccessful) return DrawAvailability.UNAVAILABLE
+
+            val data = response.body()?.data ?: return DrawAvailability.UNAVAILABLE
+            val items = data.list ?: return DrawAvailability.UNAVAILABLE
+            val matching = items.firstOrNull { it.ltEpsd == drawNo }
+                ?: return DrawAvailability.MISSING
+
+            if (NewRemoteDrawResponseValidator.validate(matching, drawNo) == null) {
+                DrawAvailability.PRESENT
+            } else {
+                DrawAvailability.UNAVAILABLE
+            }
+        } catch (e: IOException) {
+            DrawAvailability.UNAVAILABLE
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            DrawAvailability.UNAVAILABLE
+        }
+    }
+
+    private enum class DrawAvailability {
+        PRESENT,
+        MISSING,
+        UNAVAILABLE
+    }
 
     private suspend fun fetchAllFromOfficialList(
         existingMaxDrawNo: Int?,
