@@ -151,7 +151,7 @@ fun StatisticsScreen(viewModel: StatisticsViewModel) {
                 )
                 if (rankedIndexes.size > EV_PREVIEW_COUNT) {
                     OutlinedButton(onClick = { showAllEv = !showAllEv }) {
-                        Text(if (showAllEv) "상위 $EV_PREVIEW_COUNT만 보기" else "전체 ${rankedIndexes.size}개 보기")
+                        Text(if (showAllEv) "상위 ${EV_PREVIEW_COUNT}만 보기" else "전체 ${rankedIndexes.size}개 보기")
                     }
                 }
             }
