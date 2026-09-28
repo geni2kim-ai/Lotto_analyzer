@@ -10,6 +10,8 @@ import com.example.lottoinsight.core.model.Draw
 import com.example.lottoinsight.core.model.HistoricalPrizeIndex
 import com.example.lottoinsight.core.model.LottoGame
 import com.example.lottoinsight.core.model.WeightConfig
+import java.nio.ByteBuffer
+import java.security.MessageDigest
 import java.util.Random
 import kotlin.math.abs
 
@@ -40,7 +42,7 @@ class AnalysisEngineImpl(
         val stats = buildStats(targetDraws)
         val prizeIndexes = PrizeIndexCalculator.calculateHistoricalPrizeIndexes(targetDraws)
         val prizeIndexMap = prizeIndexes.associate { it.number to it.normalizedScore }
-        val randomSeed = Random().nextLong()
+        val randomSeed = deterministicSeed(targetDraws, effectiveConfig)
         val games = generateGames(
             stats = stats,
             config = effectiveConfig,
@@ -71,6 +73,33 @@ class AnalysisEngineImpl(
             return AppResult.Error(AppError.InsufficientData)
         }
         return AppResult.Success(PrizeIndexCalculator.calculateHistoricalPrizeIndexes(draws))
+    }
+
+    /**
+     * Reproducibility policy: the seed is derived from every input that can
+     * affect generated games. The same draw data, effective config and
+     * algorithm version therefore produce the same seed and recommendations.
+     * The seed is also persisted with the analysis run and surfaced in UI.
+     */
+    internal fun deterministicSeed(draws: List<Draw>, config: WeightConfig): Long {
+        val canonical = buildString {
+            append(Constants.ALGORITHM_VERSION)
+            append('|').append(config.frequencyWeight)
+            append('|').append(config.consecutiveWeight)
+            append('|').append(config.parityWeight)
+            append('|').append(config.usePrizeIndex)
+            append('|').append(config.recentN)
+            append('|').append(config.gameCount)
+            append('|').append(config.candidateCount)
+            draws.sortedBy { it.drawNo }.forEach { draw ->
+                append('|').append(draw.drawNo)
+                append(':').append(draw.numbers.sorted().joinToString(","))
+                append(':').append(draw.firstPrize ?: "null")
+            }
+        }
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(canonical.toByteArray(Charsets.UTF_8))
+        return ByteBuffer.wrap(digest, 0, Long.SIZE_BYTES).long
     }
 
     internal data class AnalysisStats(

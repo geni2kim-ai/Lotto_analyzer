@@ -54,6 +54,31 @@ class AnalysisEngineTest {
     }
 
     @Test
+    fun analysisUsesDeterministicSeedForSameInputsAndConfig() {
+        val draws = diverseDraws(24)
+        val config = WeightConfig(
+            recentN = 20,
+            gameCount = 5,
+            candidateCount = 250,
+            usePrizeIndex = true
+        )
+        val engine = AnalysisEngineImpl()
+
+        val first = (engine.analyzeAndGenerate(draws, config) as AppResult.Success).data
+        val second = (engine.analyzeAndGenerate(draws.shuffled(Random(99L)), config) as AppResult.Success).data
+        val changed = (
+            engine.analyzeAndGenerate(
+                draws,
+                config.copy(frequencyWeight = config.frequencyWeight + 1)
+            ) as AppResult.Success
+        ).data
+
+        assertEquals(first.randomSeed, second.randomSeed)
+        assertEquals(first.games, second.games)
+        assertTrue(first.randomSeed != changed.randomSeed)
+    }
+
+    @Test
     fun fallbackGamesRejectsDuplicatesAndTracksOverlapAgainstEarlierFallbacks() {
         val existingTicket = listOf(1, 2, 3, 4, 5, 6)
         val firstFallback = listOf(1, 7, 13, 19, 25, 31)

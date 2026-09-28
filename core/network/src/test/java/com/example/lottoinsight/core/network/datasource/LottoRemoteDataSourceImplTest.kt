@@ -21,12 +21,10 @@ class LottoRemoteDataSourceImplTest {
         val dataSource = LottoRemoteDataSourceImpl(service)
         val progress = mutableListOf<Pair<Int, Int>>()
 
-        val result = dataSource.fetchDrawRange(1, 3) { completed, total ->
+        val report = dataSource.fetchDrawRange(1, 3) { completed, total ->
             progress += completed to total
         }
 
-        assertTrue(result is AppResult.Success)
-        val report = (result as AppResult.Success).data
         assertEquals(listOf(1, 3), report.successful.map { it.drawNo })
         assertEquals(listOf(2), report.failedDrawNos)
         assertEquals(3, report.attemptedCount)
@@ -41,14 +39,42 @@ class LottoRemoteDataSourceImplTest {
         val service = FakeLottoApiService(failingDrawNos = setOf(1, 2, 3))
         val dataSource = LottoRemoteDataSourceImpl(service)
 
-        val result = dataSource.fetchDrawRange(1, 3)
+        val report = dataSource.fetchDrawRange(1, 3)
 
-        assertTrue(result is AppResult.Success)
-        val report = (result as AppResult.Success).data
         assertTrue(report.successful.isEmpty())
         assertEquals(listOf(1, 2, 3), report.failedDrawNos)
         assertEquals(3, report.attemptedCount)
         assertTrue(!report.isPartialSuccess)
+    }
+
+    @Test
+    fun existingDatabaseUsesIncrementalDiscoveryInsteadOfDownloadingAllDraws() = runBlocking {
+        val service = FakeLottoApiService(maxAvailableDrawNo = 102)
+        val dataSource = LottoRemoteDataSourceImpl(service)
+
+        val result = dataSource.fetchAllDraws(existingMaxDrawNo = 100)
+
+        assertTrue(result is AppResult.Success)
+        val report = (result as AppResult.Success).data
+        assertEquals(listOf(101, 102), report.successful.map { it.drawNo })
+        assertTrue(report.failedDrawNos.isEmpty())
+        assertEquals(0, service.allQueryCalls)
+        assertEquals(0, service.resultPageCalls)
+        assertTrue(service.exactQueryCalls > 0)
+    }
+
+    @Test
+    fun existingDatabaseWithNoNewDrawAvoidsAllDownload() = runBlocking {
+        val service = FakeLottoApiService(maxAvailableDrawNo = 100)
+        val dataSource = LottoRemoteDataSourceImpl(service)
+
+        val result = dataSource.fetchAllDraws(existingMaxDrawNo = 100)
+
+        assertTrue(result is AppResult.Success)
+        val report = (result as AppResult.Success).data
+        assertTrue(report.successful.isEmpty())
+        assertTrue(report.failedDrawNos.isEmpty())
+        assertEquals(0, service.allQueryCalls)
     }
 
     @Test
@@ -67,14 +93,22 @@ class LottoRemoteDataSourceImplTest {
 
     private class FakeLottoApiService(
         private val failingDrawNos: Set<Int> = emptySet(),
-        private val allDraws: List<NewRemoteDrawDto> = emptyList()
+        private val allDraws: List<NewRemoteDrawDto> = emptyList(),
+        private val maxAvailableDrawNo: Int = Int.MAX_VALUE
     ) : LottoApiService {
         var resultPageCalls: Int = 0
+            private set
+        var allQueryCalls: Int = 0
+            private set
+        var exactQueryCalls: Int = 0
             private set
 
         override suspend fun getDraw(drawNo: Int): Response<RemoteDrawDto> {
             if (drawNo in failingDrawNos) {
                 throw IOException("simulated legacy failure for $drawNo")
+            }
+            if (drawNo > maxAvailableDrawNo) {
+                return Response.success(RemoteDrawDto(returnValue = "fail"))
             }
             return Response.success(
                 RemoteDrawDto(
@@ -96,6 +130,7 @@ class LottoRemoteDataSourceImplTest {
             cacheBuster: Long
         ): Response<RemoteDrawListResponse> {
             if (drawQuery == "all") {
+                allQueryCalls++
                 return Response.success(
                     RemoteDrawListResponse(
                         data = RemoteDrawListData(list = allDraws)
@@ -103,9 +138,17 @@ class LottoRemoteDataSourceImplTest {
                 )
             }
 
+            exactQueryCalls++
             val drawNo = drawQuery.toInt()
             if (drawNo in failingDrawNos) {
                 throw IOException("simulated new-api failure for $drawNo")
+            }
+            if (drawNo > maxAvailableDrawNo) {
+                return Response.success(
+                    RemoteDrawListResponse(
+                        data = RemoteDrawListData(list = emptyList())
+                    )
+                )
             }
             return Response.success(
                 RemoteDrawListResponse(

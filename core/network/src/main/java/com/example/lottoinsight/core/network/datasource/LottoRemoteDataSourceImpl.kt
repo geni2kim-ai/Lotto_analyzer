@@ -41,44 +41,39 @@ class LottoRemoteDataSourceImpl(
         existingMaxDrawNo: Int?,
         onProgress: ((completed: Int, total: Int) -> Unit)?
     ): AppResult<DrawFetchReport> {
-        val primaryResult = try {
-            val response = apiService.getDraws(
-                drawQuery = "all",
-                cacheBuster = System.currentTimeMillis()
-            )
-            if (!response.isSuccessful) {
-                AppResult.Error(AppError.HttpError(response.code()))
-            } else {
-                val items = response.body()?.data?.list.orEmpty()
-                mapNewDraws(items, onProgress)
+        val existing = existingMaxDrawNo?.takeIf { it > 0 }
+        if (existing != null) {
+            val discoveredLatest = discoverLatestIncrementally(existing)
+            if (discoveredLatest != null) {
+                if (discoveredLatest <= existing) {
+                    return AppResult.Success(DrawFetchReport(emptyList(), emptyList()))
+                }
+                return AppResult.Success(
+                    fetchDrawRange(existing + 1, discoveredLatest, onProgress)
+                )
             }
-        } catch (e: IOException) {
-            AppResult.Error(AppError.NetworkUnavailable)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            AppResult.Error(AppError.ParseError("Unexpected response while fetching all draws"))
         }
 
+        val primaryResult = fetchAllFromOfficialList(existing, onProgress)
         if (primaryResult is AppResult.Success) return primaryResult
 
-        val latestResult = fetchLatestDrawNo(existingMaxDrawNo)
+        val latestResult = fetchLatestDrawNo(existing)
         val latest = (latestResult as? AppResult.Success)?.data
             ?: return primaryResult
-        val start = (existingMaxDrawNo ?: 0) + 1
+        val start = (existing ?: 0) + 1
         if (start > latest) {
             return AppResult.Success(DrawFetchReport(emptyList(), emptyList()))
         }
-        return fetchDrawRange(start, latest, onProgress)
+        return AppResult.Success(fetchDrawRange(start, latest, onProgress))
     }
 
     override suspend fun fetchDrawRange(
         startDrawNo: Int,
         endDrawNo: Int,
         onProgress: ((completed: Int, total: Int) -> Unit)?
-    ): AppResult<DrawFetchReport> {
+    ): DrawFetchReport {
         if (startDrawNo <= 0 || endDrawNo < startDrawNo) {
-            return AppResult.Success(DrawFetchReport(emptyList(), emptyList()))
+            return DrawFetchReport(emptyList(), emptyList())
         }
         return fetchDraws((startDrawNo..endDrawNo).toList(), onProgress)
     }
@@ -86,10 +81,10 @@ class LottoRemoteDataSourceImpl(
     override suspend fun fetchDraws(
         drawNos: List<Int>,
         onProgress: ((completed: Int, total: Int) -> Unit)?
-    ): AppResult<DrawFetchReport> {
+    ): DrawFetchReport {
         val targets = drawNos.filter { it > 0 }.distinct().sorted()
         if (targets.isEmpty()) {
-            return AppResult.Success(DrawFetchReport(emptyList(), emptyList()))
+            return DrawFetchReport(emptyList(), emptyList())
         }
 
         val total = targets.size
@@ -115,11 +110,9 @@ class LottoRemoteDataSourceImpl(
             if (result is AppResult.Success) null else drawNo
         }
 
-        return AppResult.Success(
-            DrawFetchReport(
-                successful = successful,
-                failedDrawNos = failedDrawNos
-            )
+        return DrawFetchReport(
+            successful = successful,
+            failedDrawNos = failedDrawNos
         )
     }
 
@@ -170,6 +163,101 @@ class LottoRemoteDataSourceImpl(
             throw e
         } catch (_: Exception) {
             AppResult.Error(AppError.ParseError("Unexpected response while finding latest draw"))
+        }
+    }
+
+    /**
+     * Fast path for an existing database. It probes exact draw numbers using
+     * exponential search and then binary search. Missing-draw InvalidDraw is a
+     * boundary signal; transport/parser/server failures return null so the
+     * caller can fall back to the established full-list path.
+     */
+    private suspend fun discoverLatestIncrementally(existingMaxDrawNo: Int): Int? {
+        if (existingMaxDrawNo !in 1..MAX_PLAUSIBLE_DRAW_NO) return null
+
+        var lowerBound = existingMaxDrawNo
+        var upperBound: Int? = null
+        var step = 1
+
+        while (true) {
+            val candidateLong = existingMaxDrawNo.toLong() + step.toLong()
+            if (candidateLong > MAX_PLAUSIBLE_DRAW_NO) {
+                return lowerBound
+            }
+            val candidate = candidateLong.toInt()
+            when (val result = fetchDraw(candidate)) {
+                is AppResult.Success -> {
+                    lowerBound = candidate
+                    if (candidate == MAX_PLAUSIBLE_DRAW_NO) return candidate
+                    step = (step * 2).coerceAtMost(MAX_PLAUSIBLE_DRAW_NO)
+                }
+                is AppResult.Error -> {
+                    if (isMissingDrawError(result.error, candidate)) {
+                        upperBound = candidate
+                        break
+                    }
+                    return null
+                }
+                is AppResult.Loading -> return null
+            }
+        }
+
+        var high = requireNotNull(upperBound)
+        var low = lowerBound
+        while (low + 1 < high) {
+            val mid = low + (high - low) / 2
+            when (val result = fetchDraw(mid)) {
+                is AppResult.Success -> low = mid
+                is AppResult.Error -> {
+                    if (isMissingDrawError(result.error, mid)) {
+                        high = mid
+                    } else {
+                        return null
+                    }
+                }
+                is AppResult.Loading -> return null
+            }
+        }
+        return low
+    }
+
+    private fun isMissingDrawError(error: AppError, requestedDrawNo: Int): Boolean =
+        error is AppError.InvalidDraw && error.drawNo == requestedDrawNo
+
+    private suspend fun fetchAllFromOfficialList(
+        existingMaxDrawNo: Int?,
+        onProgress: ((completed: Int, total: Int) -> Unit)?
+    ): AppResult<DrawFetchReport> {
+        return try {
+            val response = apiService.getDraws(
+                drawQuery = "all",
+                cacheBuster = System.currentTimeMillis()
+            )
+            if (!response.isSuccessful) {
+                AppResult.Error(AppError.HttpError(response.code()))
+            } else {
+                val allItems = response.body()?.data?.list.orEmpty()
+                if (allItems.isEmpty()) {
+                    AppResult.Error(AppError.ParseError("No draw data was returned by the new API"))
+                } else {
+                    val deltaItems = if (existingMaxDrawNo == null) {
+                        allItems
+                    } else {
+                        allItems.filter { (it.ltEpsd ?: 0) > existingMaxDrawNo }
+                    }
+                    if (deltaItems.isEmpty()) {
+                        AppResult.Success(DrawFetchReport(emptyList(), emptyList()))
+                    } else {
+                        mapNewDraws(deltaItems, onProgress)
+                    }
+                }
+            }
+        } catch (e: IOException) {
+            AppResult.Error(AppError.NetworkUnavailable)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            AppResult.Error(AppError.ParseError("Unexpected response while fetching all draws"))
         }
     }
 

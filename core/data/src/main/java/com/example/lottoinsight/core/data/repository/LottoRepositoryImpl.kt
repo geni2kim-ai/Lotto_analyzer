@@ -15,15 +15,11 @@ class LottoRepositoryImpl(
     private val remoteDataSource: LottoRemoteDataSource
 ) : LottoRepository {
 
-    override fun observeAllDraws(): Flow<List<Draw>> {
-        return drawDao.observeAllDraws().map { list ->
-            list.map { it.toDomain() }
-        }
-    }
+    override fun observeAllDraws(): Flow<List<Draw>> =
+        drawDao.observeAllDraws().map { list -> list.map { it.toDomain() } }
 
-    override fun observeLatestDraw(): Flow<Draw?> {
-        return drawDao.observeLatestDraw().map { it?.toDomain() }
-    }
+    override fun observeLatestDraw(): Flow<Draw?> =
+        drawDao.observeLatestDraw().map { it?.toDomain() }
 
     override suspend fun getDrawByNo(drawNo: Int): AppResult<Draw> {
         if (drawNo <= 0) {
@@ -52,17 +48,12 @@ class LottoRepositoryImpl(
         }
 
         val latestLocalDrawNo = drawDao.getLatestDrawNo() ?: 0
-        val startDrawNo = latestLocalDrawNo + 1
-        val endDrawNo = latestLocalDrawNo + fetchCount
-
-        return when (val result = remoteDataSource.fetchDrawRange(startDrawNo, endDrawNo)) {
-            is AppResult.Success -> {
-                persistSuccessful(result.data)
-                AppResult.Success(result.data.successful.size)
-            }
-            is AppResult.Error -> AppResult.Error(result.error)
-            is AppResult.Loading -> AppResult.Loading
-        }
+        val report = remoteDataSource.fetchDrawRange(
+            startDrawNo = latestLocalDrawNo + 1,
+            endDrawNo = latestLocalDrawNo + fetchCount
+        )
+        persistSuccessful(report)
+        return AppResult.Success(report.successful.size)
     }
 
     override suspend fun syncDraws(
@@ -99,14 +90,9 @@ class LottoRepositoryImpl(
             return AppResult.Success(DrawSyncReport(0, emptyList()))
         }
 
-        return when (val fetchResult = remoteDataSource.fetchDraws(targets, onProgress)) {
-            is AppResult.Success -> {
-                persistSuccessful(fetchResult.data)
-                AppResult.Success(fetchResult.data.toSyncReport())
-            }
-            is AppResult.Error -> AppResult.Error(fetchResult.error)
-            is AppResult.Loading -> AppResult.Loading
-        }
+        val report = remoteDataSource.fetchDraws(targets, onProgress)
+        persistSuccessful(report)
+        return AppResult.Success(report.toSyncReport())
     }
 
     private suspend fun persistSuccessful(report: DrawFetchReport) {

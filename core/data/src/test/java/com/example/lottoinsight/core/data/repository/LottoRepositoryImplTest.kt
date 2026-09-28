@@ -38,6 +38,27 @@ class LottoRepositoryImplTest {
         assertEquals(listOf(100, 101, 103), dao.entities.map { it.drawNo }.sorted())
     }
 
+    @Test
+    fun retryDrawsUsesAggregateReportWithoutUnreachableErrorBranch() = runBlocking {
+        val dao = FakeDrawDao(mutableListOf())
+        val remote = FakeRemoteDataSource(
+            rangeReport = DrawFetchReport(
+                successful = listOf(draw(11)),
+                failedDrawNos = listOf(12)
+            )
+        )
+        val repository = LottoRepositoryImpl(dao, remote)
+
+        val result = repository.retryDraws(listOf(12, 11, 12, -1))
+
+        assertTrue(result is AppResult.Success)
+        val report = (result as AppResult.Success).data
+        assertEquals(1, report.successfulCount)
+        assertEquals(listOf(12), report.failedDrawNos)
+        assertEquals(listOf(11, 12), remote.requestedDrawNos)
+        assertEquals(listOf(11), dao.entities.map { it.drawNo })
+    }
+
     private class FakeDrawDao(
         val entities: MutableList<DrawEntity>
     ) : DrawDao {
@@ -49,18 +70,11 @@ class LottoRepositoryImplTest {
         }
 
         override suspend fun getDrawCount(): Int = entities.size
-
         override suspend fun getLatestDrawNo(): Int? = entities.maxOfOrNull { it.drawNo }
-
-        override fun observeLatestDraw(): Flow<DrawEntity?> =
-            flowOf(entities.maxByOrNull { it.drawNo })
-
-        override fun observeAllDraws(): Flow<List<DrawEntity>> =
-            flowOf(entities.sortedBy { it.drawNo })
-
+        override fun observeLatestDraw(): Flow<DrawEntity?> = flowOf(entities.maxByOrNull { it.drawNo })
+        override fun observeAllDraws(): Flow<List<DrawEntity>> = flowOf(entities.sortedBy { it.drawNo })
         override suspend fun getRecentDraws(recentN: Int): List<DrawEntity> =
             entities.sortedByDescending { it.drawNo }.take(recentN)
-
         override suspend fun getDrawByNo(drawNo: Int): DrawEntity? =
             entities.firstOrNull { it.drawNo == drawNo }
     }
@@ -69,6 +83,8 @@ class LottoRepositoryImplTest {
         private val rangeReport: DrawFetchReport
     ) : LottoRemoteDataSource {
         var requestedRange: Pair<Int, Int>? = null
+            private set
+        var requestedDrawNos: List<Int> = emptyList()
             private set
         var singleDrawCalls: Int = 0
             private set
@@ -88,16 +104,18 @@ class LottoRepositoryImplTest {
             startDrawNo: Int,
             endDrawNo: Int,
             onProgress: ((completed: Int, total: Int) -> Unit)?
-        ): AppResult<DrawFetchReport> {
+        ): DrawFetchReport {
             requestedRange = startDrawNo to endDrawNo
-            return AppResult.Success(rangeReport)
+            return rangeReport
         }
 
         override suspend fun fetchDraws(
             drawNos: List<Int>,
             onProgress: ((completed: Int, total: Int) -> Unit)?
-        ): AppResult<DrawFetchReport> =
-            AppResult.Success(rangeReport)
+        ): DrawFetchReport {
+            requestedDrawNos = drawNos
+            return rangeReport
+        }
 
         override suspend fun fetchLatestDrawNo(existingMaxDrawNo: Int?): AppResult<Int> =
             AppResult.Error(AppError.NetworkUnavailable)

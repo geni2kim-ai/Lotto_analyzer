@@ -10,7 +10,7 @@ object Constants {
     const val DEFAULT_GAME_COUNT = 5
     const val MIN_REQUIRED_DRAWS_FOR_ANALYSIS = 10
 
-    const val ALGORITHM_VERSION = "lotto-analysis-windows-compatible-1.0"
+    const val ALGORITHM_VERSION = "lotto-analysis-deterministic-seed-1.1"
     const val PAYLOAD_VERSION = 1
 
     val ALL_NUMBERS: List<Int> = (LOTTO_MIN_NUMBER..LOTTO_MAX_NUMBER).toList()

@@ -13,5 +13,8 @@ data class DatabaseUiState(
     val syncMessage: String? = null,
     val syncFailed: Boolean = false,
     val syncFailedDrawNos: List<Int> = emptyList(),
+    val searchQuery: String = "",
+    val searchResult: Draw? = null,
+    val searchMessage: String? = null,
     val userMessage: String? = null
 )

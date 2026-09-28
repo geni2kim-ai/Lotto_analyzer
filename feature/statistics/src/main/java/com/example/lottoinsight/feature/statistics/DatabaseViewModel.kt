@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.lottoinsight.core.common.AppResult
 import com.example.lottoinsight.core.data.repository.DrawSyncReport
 import com.example.lottoinsight.core.data.repository.LottoRepository
+import com.example.lottoinsight.core.model.Draw
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +21,7 @@ class DatabaseViewModel(
 
     private val _uiState = MutableStateFlow(DatabaseUiState())
     val uiState: StateFlow<DatabaseUiState> = _uiState.asStateFlow()
+    private var cachedDraws: List<Draw> = emptyList()
 
     init {
         observeDraws()
@@ -37,16 +39,61 @@ class DatabaseViewModel(
                     }
                 }
                 .collect { draws ->
-                    val latest = draws.maxOfOrNull { it.drawNo } ?: 0
-                    _uiState.update {
-                        it.copy(
+                    cachedDraws = draws.sortedByDescending { draw -> draw.drawNo }
+                    val latest = cachedDraws.firstOrNull()?.drawNo ?: 0
+                    _uiState.update { current ->
+                        val refreshedSearchResult = current.searchResult?.drawNo?.let { searchedNo ->
+                            cachedDraws.firstOrNull { it.drawNo == searchedNo }
+                        }
+                        current.copy(
                             isLoading = false,
-                            totalDrawsCount = draws.size,
+                            totalDrawsCount = cachedDraws.size,
                             latestDrawNo = latest,
-                            recentDraws = draws.sortedByDescending { draw -> draw.drawNo }.take(300)
+                            recentDraws = cachedDraws.take(300),
+                            searchResult = refreshedSearchResult ?: current.searchResult
                         )
                     }
                 }
+        }
+    }
+
+    fun updateSearchQuery(query: String) {
+        _uiState.update {
+            it.copy(
+                searchQuery = query.filter(Char::isDigit).take(MAX_DRAW_QUERY_LENGTH),
+                searchMessage = null
+            )
+        }
+    }
+
+    fun searchDraw() {
+        val drawNo = _uiState.value.searchQuery.toIntOrNull()
+        if (drawNo == null || drawNo <= 0) {
+            _uiState.update {
+                it.copy(
+                    searchResult = null,
+                    searchMessage = "검색할 회차 번호를 입력해 주세요."
+                )
+            }
+            return
+        }
+
+        val match = cachedDraws.firstOrNull { it.drawNo == drawNo }
+        _uiState.update {
+            it.copy(
+                searchResult = match,
+                searchMessage = if (match == null) {
+                    "저장된 DB에 ${drawNo}회 데이터가 없습니다."
+                } else {
+                    "${drawNo}회 데이터를 찾았습니다."
+                }
+            )
+        }
+    }
+
+    fun clearSearch() {
+        _uiState.update {
+            it.copy(searchQuery = "", searchResult = null, searchMessage = null)
         }
     }
 
@@ -134,7 +181,7 @@ class DatabaseViewModel(
             if (retry) {
                 "재시도 완료: ${report.successfulCount}건 복구"
             } else {
-                "동기화 완료: ${after.size}건 처리, 신규 ${added}건"
+                "동기화 완료: ${after.size}건 처리, 신규 $added건"
             }
         } else {
             "부분 완료: 총 ${report.attemptedCount}건 중 ${report.successfulCount}건 성공, " +
@@ -181,5 +228,6 @@ class DatabaseViewModel(
 
     private companion object {
         const val MAX_VISIBLE_FAILED_DRAWS = 6
+        const val MAX_DRAW_QUERY_LENGTH = 5
     }
 }

@@ -10,11 +10,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -53,9 +58,12 @@ fun HistoryScreen(
             Text(text = "저장된 분석 추천 이력이 없습니다.")
         } else {
             LazyColumn {
-                items(uiState.analysisRuns) { run ->
+                items(uiState.analysisRuns, key = { it.runId }) { run ->
                     val isExpanded = uiState.expandedRunId == run.runId
-                    val dateStr = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(run.createdAt))
+                    val dateStr = SimpleDateFormat(
+                        "yyyy-MM-dd HH:mm",
+                        Locale.getDefault()
+                    ).format(Date(run.createdAt))
 
                     Card(
                         modifier = Modifier
@@ -65,24 +73,57 @@ fun HistoryScreen(
                         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "실행 #${run.runId} (기준회차: ${run.latestDrawNo}회)",
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(text = dateStr, style = MaterialTheme.typography.bodySmall)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = dateStr,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "기준 ${run.latestDrawNo}회 · 최근 ${run.recentN}회 · ${run.gameCount}게임",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                TextButton(
+                                    onClick = { viewModel.toggleRunDetails(run.runId) }
+                                ) {
+                                    Text(if (isExpanded) "닫기" else "상세")
+                                    Icon(
+                                        imageVector = if (isExpanded) {
+                                            Icons.Default.ExpandLess
+                                        } else {
+                                            Icons.Default.ExpandMore
+                                        },
+                                        contentDescription = if (isExpanded) "상세 닫기" else "상세 열기"
+                                    )
+                                }
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "가중치 - 빈도: ${run.weightConfig.frequencyWeight}, 연속: ${run.weightConfig.consecutiveWeight}, 홀짝: ${run.weightConfig.parityWeight}",
+                                text = "실행 #${run.runId} · " +
+                                        if (run.weightConfig.usePrizeIndex) "EV 사용" else "EV 미사용",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "Seed ${run.randomSeed} · 알고리즘 ${run.algorithmVersion}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "가중치 - 빈도: ${run.weightConfig.frequencyWeight}, " +
+                                        "연속: ${run.weightConfig.consecutiveWeight}, " +
+                                        "홀짝: ${run.weightConfig.parityWeight}",
                                 style = MaterialTheme.typography.bodySmall
                             )
 
                             if (isExpanded) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "추천 게임 리스트:",
+                                    text = "추천 게임 리스트",
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
@@ -91,7 +132,10 @@ fun HistoryScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier.padding(vertical = 2.dp)
                                     ) {
-                                        Text(text = "게임 ${game.gameIndex}: ", fontWeight = FontWeight.SemiBold)
+                                        Text(
+                                            text = "게임 ${game.gameIndex}: ",
+                                            fontWeight = FontWeight.SemiBold
+                                        )
                                         LottoBallRow(numbers = game.numbers)
                                     }
                                 }

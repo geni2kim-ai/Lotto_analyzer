@@ -16,6 +16,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,13 +29,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +55,13 @@ import com.example.lottoinsight.feature.ui.components.LottoBallRow
 fun AnalysisScreen(viewModel: AnalysisViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val result = uiState.latestAnalysisResult
+    var configExpanded by rememberSaveable { mutableStateOf(true) }
+    val expandedGames = remember { mutableStateMapOf<Int, Boolean>() }
+
+    LaunchedEffect(result?.randomSeed) {
+        if (result != null) configExpanded = false
+    }
 
     Column(
         modifier = Modifier
@@ -61,12 +75,26 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
         )
         Spacer(modifier = Modifier.height(12.dp))
 
-        WeightConfigCard(
-            config = uiState.config,
-            isLoading = uiState.isLoading,
-            onConfigChange = viewModel::updateConfig,
-            onGenerateClick = viewModel::runAnalysisAndGenerate
-        )
+        if (result == null || configExpanded) {
+            WeightConfigCard(
+                config = uiState.config,
+                isLoading = uiState.isLoading,
+                onConfigChange = viewModel::updateConfig,
+                onGenerateClick = viewModel::runAnalysisAndGenerate,
+                onCollapse = if (result != null) {
+                    { configExpanded = false }
+                } else {
+                    null
+                }
+            )
+        } else {
+            ConfigSummaryCard(
+                config = uiState.config,
+                onExpand = { configExpanded = true },
+                onGenerateClick = viewModel::runAnalysisAndGenerate,
+                isLoading = uiState.isLoading
+            )
+        }
         Spacer(modifier = Modifier.height(12.dp))
 
         uiState.userMessage?.let {
@@ -74,7 +102,7 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        uiState.latestAnalysisResult?.let { result ->
+        result?.let { analysis ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -82,24 +110,16 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "추천 결과 · 최신 ${result.latestDrawNo}회 · 최근 ${result.recentN}회",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "가중치 ${(result.weightConfig.normalizedFrequency * 100.0).formatOneDecimal()}% / " +
-                                "${(result.weightConfig.normalizedConsecutive * 100.0).formatOneDecimal()}% / " +
-                                "${(result.weightConfig.normalizedParity * 100.0).formatOneDecimal()}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = "추천 결과",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 FilledTonalButton(
                     onClick = {
-                        val copied = copyAnalysisResultAsImage(context, result)
+                        val copied = copyAnalysisResultAsImage(context, analysis)
                         Toast.makeText(
                             context,
                             if (copied) "이미지가 클립보드에 복사되었습니다." else "이미지 복사에 실패했습니다.",
@@ -116,13 +136,31 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                     Text("이미지 복사")
                 }
             }
-            Spacer(modifier = Modifier.height(6.dp))
+
+            AnalysisStatusChips(
+                latestDrawNo = analysis.latestDrawNo,
+                recentN = analysis.recentN,
+                usePrizeIndex = analysis.weightConfig.usePrizeIndex,
+                algorithmVersion = analysis.algorithmVersion
+            )
+            Text(
+                text = "재현 seed: ${analysis.randomSeed}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "동일 데이터·설정·알고리즘 버전은 같은 seed와 추천 결과를 생성합니다.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
 
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                items(result.games, key = { it.gameIndex }) { game ->
+                items(analysis.games, key = { it.gameIndex }) { game ->
+                    val detailsExpanded = expandedGames[game.gameIndex] == true
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -136,20 +174,139 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                                 )
                                 LottoBallRow(numbers = game.sortedNumbers, ballSize = 34.dp)
                             }
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "종합 ${(game.totalScore * 100.0).formatOneDecimal()} · " +
-                                        "빈도 ${(game.frequencyScore * 100.0).formatOneDecimal()} · " +
-                                        "연속 ${(game.consecutiveScore * 100.0).formatOneDecimal()} · " +
-                                        "홀짝 ${(game.parityScore * 100.0).formatOneDecimal()}",
-                                style = MaterialTheme.typography.bodySmall
+                                text = "종합 점수 ${(game.totalScore * 100.0).formatOneDecimal()}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
                             )
-                            Text(
-                                text = "홀수 ${game.oddCount}개 · 연속쌍 ${game.pairCount}개 · 최대 중복 ${game.maxOverlap}개",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            TextButton(
+                                onClick = {
+                                    expandedGames[game.gameIndex] = !detailsExpanded
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = if (detailsExpanded) {
+                                        Icons.Default.ExpandLess
+                                    } else {
+                                        Icons.Default.ExpandMore
+                                    },
+                                    contentDescription = null
+                                )
+                                Text(if (detailsExpanded) "세부 점수 닫기" else "세부 점수 보기")
+                            }
+                            if (detailsExpanded) {
+                                Text(
+                                    text = "빈도 ${(game.frequencyScore * 100.0).formatOneDecimal()} · " +
+                                            "연속 ${(game.consecutiveScore * 100.0).formatOneDecimal()} · " +
+                                            "홀짝 ${(game.parityScore * 100.0).formatOneDecimal()} · " +
+                                            "EV ${(game.prizeScore * 100.0).formatOneDecimal()}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    text = "홀수 ${game.oddCount}개 · 연속쌍 ${game.pairCount}개 · 최대 중복 ${game.maxOverlap}개",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnalysisStatusChips(
+    latestDrawNo: Int,
+    recentN: Int,
+    usePrizeIndex: Boolean,
+    algorithmVersion: String
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            StatusChip(
+                text = "최신 ${latestDrawNo}회",
+                modifier = Modifier.weight(1f)
+            )
+            StatusChip(
+                text = "분석 ${recentN}회",
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            StatusChip(
+                text = if (usePrizeIndex) "EV 사용" else "EV 미사용",
+                modifier = Modifier.weight(1f)
+            )
+            StatusChip(
+                text = "알고리즘 $algorithmVersion",
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatusChip(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.secondaryContainer
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+        )
+    }
+}
+
+@Composable
+private fun ConfigSummaryCard(
+    config: WeightConfig,
+    onExpand: () -> Unit,
+    onGenerateClick: () -> Unit,
+    isLoading: Boolean
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = "분석 설정",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "${config.gameCount}게임 · 최근 ${config.recentN}회 · " +
+                        if (config.usePrizeIndex) "EV 사용" else "EV 미사용",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onExpand,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("설정 변경")
+                }
+                Button(
+                    onClick = onGenerateClick,
+                    enabled = !isLoading,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(if (isLoading) "분석 중…" else "다시 생성")
                 }
             }
         }
@@ -161,13 +318,27 @@ private fun WeightConfigCard(
     config: WeightConfig,
     isLoading: Boolean,
     onConfigChange: (WeightConfig) -> Unit,
-    onGenerateClick: () -> Unit
+    onGenerateClick: () -> Unit,
+    onCollapse: (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
+            if (onCollapse != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("분석 설정", fontWeight = FontWeight.Bold)
+                    TextButton(onClick = onCollapse) {
+                        Text("접기")
+                    }
+                }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -221,7 +392,12 @@ private fun WeightConfigCard(
                 enabled = !isLoading
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("분석 중…")
                 } else {
                     Text("추천 번호 조합 생성")
                 }
