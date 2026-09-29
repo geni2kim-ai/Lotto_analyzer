@@ -42,6 +42,11 @@ jobs:
       - name: Check Kotlin interpolation convention
         run: python3 tools/check_kotlin_interpolation.py
 
+      - name: Inspect Fragment dependency graph
+        run: |
+          ./gradlew --no-daemon :app:dependencyInsight --dependency androidx.fragment:fragment --configuration debugRuntimeClasspath
+          ./gradlew --no-daemon :app:dependencies --configuration debugRuntimeClasspath
+
       - name: Assemble debug
         run: ./gradlew --no-daemon assembleDebug
 
