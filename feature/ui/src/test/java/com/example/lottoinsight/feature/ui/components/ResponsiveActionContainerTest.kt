@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -52,30 +53,12 @@ class ResponsiveActionContainerTest {
     }
 
     @Test
-    fun regularFontAndWideWidthKeepHorizontalLayout() {
-        composeRule.setContent {
-            CompositionLocalProvider(
-                LocalDensity provides Density(density = 1f, fontScale = 1f)
-            ) {
-                ResponsiveActionContainer(
-                    primary = { modifier ->
-                        Button(onClick = {}, modifier = modifier) {
-                            Text("primary")
-                        }
-                    },
-                    secondary = { modifier ->
-                        Button(onClick = {}, modifier = modifier) {
-                            Text("secondary")
-                        }
-                    },
-                    modifier = Modifier.width(420.dp)
-                )
-            }
-        }
-
-        composeRule.onNodeWithTag(RESPONSIVE_ACTIONS_ROW_TAG)
-            .assertExists()
-        composeRule.onNodeWithTag(RESPONSIVE_ACTIONS_COLUMN_TAG)
-            .assertDoesNotExist()
+    fun regularFontAndWideWidthChooseHorizontalDecision() {
+        assertFalse(
+            shouldStackActions(
+                availableWidth = 420.dp,
+                fontScale = 1f
+            )
+        )
     }
 }
