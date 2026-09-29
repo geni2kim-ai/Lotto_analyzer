@@ -2,12 +2,20 @@ package com.example.lottoinsight.feature.ui.analysis
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.unit.Density
+import android.graphics.Bitmap
+import java.io.File
+import java.io.FileOutputStream
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -83,6 +91,71 @@ class AnalysisStatusChipsTest {
         )
     }
 
+    @Test
+    @Config(sdk = [34], qualifiers = "w359dp-h800dp")
+    fun u1Captures359dpAt2_0FontScaleFlowRowScreenshot() {
+        setStatusChips(
+            fontScale = 2.0f,
+            latestDrawNo = Int.MAX_VALUE,
+            recentN = Int.MAX_VALUE,
+            usePrizeIndex = false,
+            algorithmVersion = "analysis-engine-production-localized-2026-09-29-build-abcdef1234567890"
+        )
+
+        val output = File(
+            System.getProperty("user.dir"),
+            "feature/ui/build/reports/analysis-status-chips/u1-359dp-2x.png"
+        )
+        output.parentFile?.mkdirs()
+
+        FileOutputStream(output).use { stream ->
+            val compressed = composeRule
+                .onNodeWithTag(ANALYSIS_STATUS_CHIPS_WRAP_TAG)
+                .captureToImage()
+                .asAndroidBitmap()
+                .compress(Bitmap.CompressFormat.PNG, 100, stream)
+            assertTrue(compressed)
+        }
+        assertTrue(output.isFile)
+        assertTrue(output.length() > 0L)
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "w359dp-h800dp")
+    fun u2FlowRowSemanticOrderMatchesWrappedVisualOrder() {
+        val labels = listOf(
+            "최신 2147483647회",
+            "분석 2147483647회",
+            "EV 미사용",
+            "알고리즘 analysis-engine-production-localized-2026-09-29-build-abcdef1234567890"
+        )
+        setStatusChips(
+            fontScale = 2.0f,
+            latestDrawNo = Int.MAX_VALUE,
+            recentN = Int.MAX_VALUE,
+            usePrizeIndex = false,
+            algorithmVersion = "analysis-engine-production-localized-2026-09-29-build-abcdef1234567890"
+        )
+
+        val semanticOrder = collectTextInSemanticsOrder(
+            composeRule.onNodeWithTag(
+                ANALYSIS_STATUS_CHIPS_WRAP_TAG,
+                useUnmergedTree = true
+            )
+        ).filter { it in labels }
+
+        val visualOrder = labels.sortedWith(
+            compareBy<String> { label ->
+                composeRule.onNodeWithText(label).fetchSemanticsNode().boundsInRoot.top
+            }.thenBy { label ->
+                composeRule.onNodeWithText(label).fetchSemanticsNode().boundsInRoot.left
+            }
+        )
+
+        assertEquals(labels, semanticOrder)
+        assertEquals(labels, visualOrder)
+    }
+
     private fun assertStatusChipLayoutAtWidth(
         expectedTag: String,
         absentTag: String,
@@ -145,6 +218,18 @@ class AnalysisStatusChipsTest {
                 }
             }
         }
+    }
+
+    private fun collectTextInSemanticsOrder(
+        interaction: SemanticsNodeInteraction
+    ): List<String> {
+        fun collect(node: androidx.compose.ui.semantics.SemanticsNode): List<String> {
+            val ownText = node.config.getOrNull(SemanticsProperties.Text)
+                .orEmpty()
+                .map { it.text }
+            return ownText + node.children.flatMap(::collect)
+        }
+        return collect(interaction.fetchSemanticsNode())
     }
 
     private fun setStatusChips(

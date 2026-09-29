@@ -22,8 +22,8 @@ android {
         applicationId = "com.aimaestro.lottoanalyzer"
         minSdk = 26
         targetSdk = 36
-        versionCode = 15
-        versionName = "1.0.14"
+        versionCode = 16
+        versionName = "1.0.15"
     }
 
     signingConfigs {
@@ -67,11 +67,13 @@ android {
     }
 }
 
+val androidxFragmentVersion = providers.gradleProperty("androidxFragmentVersion").get()
+
 configurations.configureEach {
     resolutionStrategy {
-        // P-1: Play Services basement requests Fragment 1.1.0 transitively.
-        // 1.9.1 was rejected because it pulls Compose/Lifecycle versions that require AGP 8.6+; use the latest compatible 1.8.x stable.
-        force("androidx.fragment:fragment:1.8.9")
+        // P-1/F1: Play Services basement requests Fragment 1.1.0 transitively.
+        // gradle.properties is the single source of truth shared with the CI resolution gate.
+        force("androidx.fragment:fragment:$androidxFragmentVersion")
     }
 }
 

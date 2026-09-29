@@ -44,12 +44,28 @@ jobs:
 
       - name: Verify Fragment dependency resolution
         run: |
+          fragment_version="$(sed -n 's/^androidxFragmentVersion=//p' gradle.properties)"
+          test -n "$fragment_version"
           ./gradlew --no-daemon :app:dependencyInsight --dependency androidx.fragment:fragment --configuration debugRuntimeClasspath | tee fragment-dependency-insight.txt
-          grep -Fq 'androidx.fragment:fragment:1.8.9' fragment-dependency-insight.txt
-          grep -Fq 'androidx.fragment:fragment:1.1.0 -> 1.8.9' fragment-dependency-insight.txt
+          grep -Fq "androidx.fragment:fragment:$fragment_version" fragment-dependency-insight.txt
+          grep -Fq "androidx.fragment:fragment:1.1.0 -> $fragment_version" fragment-dependency-insight.txt
 
       - name: Assemble debug
         run: ./gradlew --no-daemon assembleDebug
 
       - name: Run debug unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Emit U1 FlowRow screenshot evidence
+        run: |
+          screenshot="feature/ui/build/reports/analysis-status-chips/u1-359dp-2x.png"
+          test -s "$screenshot"
+          echo "U1 screenshot: $screenshot"
+          echo "U1_SCREENSHOT_BASE64=$(base64 -w0 "$screenshot")"
+
+      - name: Upload U1 FlowRow screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: analysis-status-chips-u1
+          path: feature/ui/build/reports/analysis-status-chips/u1-359dp-2x.png
+          if-no-files-found: error
