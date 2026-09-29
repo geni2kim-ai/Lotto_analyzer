@@ -56,5 +56,26 @@ class KotlinInterpolationCheckerTest(unittest.TestCase):
         self.assertEqual([], find_violations_in_lines(lines))
 
 
+    def test_escaped_quote_does_not_turn_following_block_marker_into_comment(self):
+        lines = [
+            r'val s = "a\" /* not comment" // real comment',
+            'val t = "$z개"',
+        ]
+        self.assertEqual(
+            [(2, 'val t = "$z개"', "z")],
+            find_violations_in_lines(lines),
+        )
+
+    def test_escaped_apostrophe_in_char_literal_preserves_following_scan(self):
+        lines = [
+            r"val c = '\'' // real comment",
+            'val t = "$z개"',
+        ]
+        self.assertEqual(
+            [(2, 'val t = "$z개"', "z")],
+            find_violations_in_lines(lines),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

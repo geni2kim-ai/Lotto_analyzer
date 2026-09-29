@@ -15,6 +15,13 @@ import androidx.compose.ui.unit.dp
 internal const val RESPONSIVE_ACTIONS_ROW_TAG = "responsive-actions-row"
 internal const val RESPONSIVE_ACTIONS_COLUMN_TAG = "responsive-actions-column"
 
+/**
+ * Responsive layout for a clear primary/secondary action pair.
+ *
+ * Use this primitive when two actions compete for horizontal space and their
+ * hierarchy is explicit. Do not wrap a single action merely for consistency;
+ * a native full-width button is simpler and avoids unnecessary layout policy.
+ */
 @Composable
 internal fun ResponsiveActionContainer(
     primary: @Composable (Modifier) -> Unit,

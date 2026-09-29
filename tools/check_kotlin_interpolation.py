@@ -69,7 +69,7 @@ def strip_kotlin_comments(line: str, state: LexState) -> str:
                     escaped = False
                     i += 1
                     continue
-                if current == "\\\\":
+                if current == "\\":
                     escaped = True
                     i += 1
                     continue
@@ -89,7 +89,7 @@ def strip_kotlin_comments(line: str, state: LexState) -> str:
                     escaped = False
                     i += 1
                     continue
-                if current == "\\\\":
+                if current == "\\":
                     escaped = True
                     i += 1
                     continue

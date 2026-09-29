@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import com.example.lottoinsight.core.model.WeightConfig
 import com.example.lottoinsight.feature.analysis.AnalysisViewModel
 import com.example.lottoinsight.feature.ui.components.LottoBallRow
+import com.example.lottoinsight.feature.ui.components.ResponsiveActionContainer
 
 @Composable
 fun AnalysisScreen(viewModel: AnalysisViewModel) {
@@ -355,24 +356,25 @@ private fun ConfigSummaryCard(
                         if (config.usePrizeIndex) "EV 사용" else "EV 미사용",
                 style = MaterialTheme.typography.bodySmall
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onExpand,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("설정 변경")
+            ResponsiveActionContainer(
+                primary = { actionModifier ->
+                    Button(
+                        onClick = onGenerateClick,
+                        enabled = !isLoading,
+                        modifier = actionModifier
+                    ) {
+                        Text(if (isLoading) "분석 중…" else "다시 생성")
+                    }
+                },
+                secondary = { actionModifier ->
+                    OutlinedButton(
+                        onClick = onExpand,
+                        modifier = actionModifier
+                    ) {
+                        Text("설정 변경")
+                    }
                 }
-                Button(
-                    onClick = onGenerateClick,
-                    enabled = !isLoading,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(if (isLoading) "분석 중…" else "다시 생성")
-                }
-            }
+            )
         }
     }
 }
