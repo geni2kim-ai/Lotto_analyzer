@@ -70,8 +70,8 @@ android {
 configurations.configureEach {
     resolutionStrategy {
         // P-1: Play Services basement requests Fragment 1.1.0 transitively.
-        // Keep the override app-scoped instead of broad Firebase/Compose upgrades.
-        force("androidx.fragment:fragment:1.9.1")
+        // 1.9.1 was rejected because it pulls Compose/Lifecycle versions that require AGP 8.6+; use the latest compatible 1.8.x stable.
+        force("androidx.fragment:fragment:1.8.9")
     }
 }
 
