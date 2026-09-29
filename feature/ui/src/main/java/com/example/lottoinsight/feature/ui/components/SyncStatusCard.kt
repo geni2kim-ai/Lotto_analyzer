@@ -22,6 +22,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.stateDescription
@@ -127,29 +128,36 @@ fun SyncStatusCard(
             }
 
             if (isFailed && !isSyncing) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedButton(
-                        onClick = onRetry,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            if (failedDrawNos.isEmpty()) {
-                                "동기화 다시 시도"
-                            } else {
-                                "실패한 ${failedDrawNos.size}개 회차 다시 시도"
-                            }
-                        )
-                    }
-                    if (failedDrawNos.size > FAILURE_PREVIEW_LIMIT && onShowFailedDetails != null) {
-                        TextButton(onClick = onShowFailedDetails) {
-                            Text("실패 목록 보기")
+                val showFailureDetails =
+                    failedDrawNos.size > FAILURE_PREVIEW_LIMIT && onShowFailedDetails != null
+                ResponsiveActionContainer(
+                    primary = { actionModifier ->
+                        OutlinedButton(
+                            onClick = onRetry,
+                            modifier = actionModifier.testTag(SYNC_RETRY_ACTION_TAG)
+                        ) {
+                            Text(
+                                if (failedDrawNos.isEmpty()) {
+                                    "동기화 다시 시도"
+                                } else {
+                                    "실패한 ${failedDrawNos.size}개 회차 다시 시도"
+                                }
+                            )
                         }
+                    },
+                    secondary = if (showFailureDetails) {
+                        { actionModifier ->
+                            TextButton(
+                                onClick = requireNotNull(onShowFailedDetails),
+                                modifier = actionModifier.testTag(SYNC_FAILURE_DETAILS_ACTION_TAG)
+                            ) {
+                                Text("실패 목록 보기")
+                            }
+                        }
+                    } else {
+                        null
                     }
-                }
+                )
             }
             Spacer(modifier = Modifier.height(2.dp))
         }
@@ -157,3 +165,7 @@ fun SyncStatusCard(
 }
 
 private const val FAILURE_PREVIEW_LIMIT = 6
+
+
+internal const val SYNC_RETRY_ACTION_TAG = "sync-retry-action"
+internal const val SYNC_FAILURE_DETAILS_ACTION_TAG = "sync-failure-details-action"

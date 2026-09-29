@@ -36,6 +36,9 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
 
+      - name: Test Kotlin interpolation checker
+        run: python3 -m unittest tools.test_check_kotlin_interpolation
+
       - name: Check Kotlin interpolation convention
         run: python3 tools/check_kotlin_interpolation.py
 

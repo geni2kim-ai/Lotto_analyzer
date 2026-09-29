@@ -32,7 +32,13 @@ boundary visually ambiguous, even when the compiler would currently accept it.
 
 ### Checker scope
 
-The checker scans Kotlin source code and skips comment-only lines, including
-KDoc/block-comment bodies and `//` comment lines. This avoids false positives
-from documentation examples. Inline comments that share a line with executable
-code are still scanned; keep braced interpolation in those lines as well.
+The checker uses a small Kotlin-aware lexer before applying the interpolation
+rule. It removes real `//` and nested `/* ... */` comments only when those
+markers occur outside string/character literals. Comment markers inside normal
+strings or triple-quoted strings are preserved, because interpolation in those
+strings is executable Kotlin and must still follow the braced rule.
+
+The lexer is regression-tested for block comments, nested block comments,
+normal strings, triple-quoted strings, and inline comments. It is deliberately
+not a full Kotlin parser, but it no longer relies on line-prefix heuristics such
+as `stripped.startswith("/*")`.

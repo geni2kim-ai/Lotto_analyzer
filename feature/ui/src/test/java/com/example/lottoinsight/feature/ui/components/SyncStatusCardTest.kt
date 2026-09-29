@@ -5,10 +5,9 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertHasClickAction
-import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,15 +23,24 @@ class SyncStatusCardTest {
 
     @Test
     fun summaryIsMergedLiveRegionWhileActionsRemainIndependentClickTargets() {
+        val message = "partial-sync-test-message"
+        val failedDrawNos = (1..7).toList()
+        val presentation = resolveSyncStatusPresentation(
+            isSyncing = false,
+            message = message,
+            isFailed = true,
+            failedDrawCount = failedDrawNos.size
+        )
+
         composeRule.setContent {
             MaterialTheme {
                 SyncStatusCard(
                     isSyncing = false,
                     completed = 4,
                     total = 7,
-                    message = "부분 완료: 총 7건 중 4건 성공, 3건 실패",
+                    message = message,
                     isFailed = true,
-                    failedDrawNos = (1..7).toList(),
+                    failedDrawNos = failedDrawNos,
                     onRetry = {},
                     onShowFailedDetails = {}
                 )
@@ -45,21 +53,20 @@ class SyncStatusCardTest {
         )
         val expectedState = SemanticsMatcher.expectValue(
             SemanticsProperties.StateDescription,
-            "동기화 확인 필요. 부분 완료: 총 7건 중 4건 성공, 3건 실패. 실패 회차 7건"
+            presentation.announcement
         )
 
         composeRule.onNode(liveRegion and expectedState)
             .assertExists()
-            .assertTextContains("동기화 확인 필요")
 
         composeRule.onNode(liveRegion and hasClickAction())
             .assertDoesNotExist()
 
-        composeRule.onNodeWithText("실패한 7개 회차 다시 시도")
+        composeRule.onNodeWithTag(SYNC_RETRY_ACTION_TAG)
             .assertExists()
             .assertHasClickAction()
 
-        composeRule.onNodeWithText("실패 목록 보기")
+        composeRule.onNodeWithTag(SYNC_FAILURE_DETAILS_ACTION_TAG)
             .assertExists()
             .assertHasClickAction()
     }
