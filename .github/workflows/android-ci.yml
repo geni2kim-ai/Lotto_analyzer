@@ -58,6 +58,8 @@ jobs:
 
       - name: Report U1 FlowRow geometry evidence
         run: |
-          geometry="feature/ui/build/reports/analysis-status-chips/u1-geometry.txt"
+          geometry="$(find . -name u1-geometry.txt -print -quit)"
+          test -n "$geometry"
           test -s "$geometry"
+          echo "U1 geometry: $geometry"
           cat "$geometry"
