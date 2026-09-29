@@ -45,14 +45,8 @@ jobs:
       - name: Verify Fragment dependency resolution
         run: |
           ./gradlew --no-daemon :app:dependencyInsight --dependency androidx.fragment:fragment --configuration debugRuntimeClasspath | tee fragment-dependency-insight.txt
-          grep -Eq '^androidx\.fragment:fragment:1\.9\.1( \(forced\))?
-      - name: Assemble debug
-        run: ./gradlew --no-daemon assembleDebug
-
-      - name: Run debug unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
- fragment-dependency-insight.txt
-          grep -q 'androidx.fragment:fragment:1.1.0 -> 1.9.1' fragment-dependency-insight.txt
+          grep -Fq 'androidx.fragment:fragment:1.9.1' fragment-dependency-insight.txt
+          grep -Fq 'androidx.fragment:fragment:1.1.0 -> 1.9.1' fragment-dependency-insight.txt
 
       - name: Assemble debug
         run: ./gradlew --no-daemon assembleDebug
