@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,6 +52,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.lottoinsight.core.model.WeightConfig
 import com.example.lottoinsight.feature.analysis.AnalysisViewModel
@@ -289,6 +292,7 @@ private fun ReproducibilityInfo(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun AnalysisStatusChips(
     latestDrawNo: Int,
@@ -303,28 +307,17 @@ internal fun AnalysisStatusChips(
         )
 
         if (stackVertically) {
-            Column(
+            FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag(ANALYSIS_STATUS_CHIPS_WRAP_TAG),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                StatusChip(
-                    text = "최신 ${latestDrawNo}회",
-                    modifier = Modifier.fillMaxWidth()
-                )
-                StatusChip(
-                    text = "분석 ${recentN}회",
-                    modifier = Modifier.fillMaxWidth()
-                )
-                StatusChip(
-                    text = if (usePrizeIndex) "EV 사용" else "EV 미사용",
-                    modifier = Modifier.fillMaxWidth()
-                )
-                StatusChip(
-                    text = "알고리즘 $algorithmVersion",
-                    modifier = Modifier.fillMaxWidth()
-                )
+                StatusChip(text = "최신 ${latestDrawNo}회")
+                StatusChip(text = "분석 ${recentN}회")
+                StatusChip(text = if (usePrizeIndex) "EV 사용" else "EV 미사용")
+                AlgorithmStatusChip(algorithmVersion = algorithmVersion)
             }
         } else {
             Column(
@@ -354,14 +347,32 @@ internal fun AnalysisStatusChips(
                         text = if (usePrizeIndex) "EV 사용" else "EV 미사용",
                         modifier = Modifier.weight(1f)
                     )
-                    StatusChip(
-                        text = "알고리즘 $algorithmVersion",
+                    AlgorithmStatusChip(
+                        algorithmVersion = algorithmVersion,
                         modifier = Modifier.weight(1f)
                     )
                 }
             }
         }
     }
+}
+
+/**
+ * Keeps the compact header chip to one visual line while retaining the full source
+ * string in Text semantics. The full version is also exposed in ReproducibilityInfo,
+ * where users can view and copy the complete algorithm value.
+ */
+@Composable
+private fun AlgorithmStatusChip(
+    algorithmVersion: String,
+    modifier: Modifier = Modifier
+) {
+    StatusChip(
+        text = "알고리즘 $algorithmVersion",
+        modifier = modifier,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
 }
 
 /**
@@ -373,7 +384,9 @@ internal fun AnalysisStatusChips(
 @Composable
 private fun StatusChip(
     text: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip
 ) {
     Surface(
         modifier = modifier,
@@ -383,6 +396,8 @@ private fun StatusChip(
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium,
+            maxLines = maxLines,
+            overflow = overflow,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
         )
     }
