@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -61,4 +62,83 @@ class ResponsiveActionContainerTest {
             )
         )
     }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "w359dp-h800dp")
+    fun width359dpStacksActionsVertically() {
+        assertResponsiveLayoutTagAtWidth(
+            expectedTag = RESPONSIVE_ACTIONS_COLUMN_TAG,
+            absentTag = RESPONSIVE_ACTIONS_ROW_TAG
+        )
+        assertTrue(
+            shouldStackActions(
+                availableWidth = 359.dp,
+                fontScale = 1f
+            )
+        )
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "w360dp-h800dp")
+    fun width360dpKeepsActionsHorizontal() {
+        assertResponsiveLayoutTagAtWidth(
+            expectedTag = RESPONSIVE_ACTIONS_ROW_TAG,
+            absentTag = RESPONSIVE_ACTIONS_COLUMN_TAG
+        )
+        assertFalse(
+            shouldStackActions(
+                availableWidth = 360.dp,
+                fontScale = 1f
+            )
+        )
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "w361dp-h800dp")
+    fun width361dpKeepsActionsHorizontal() {
+        assertResponsiveLayoutTagAtWidth(
+            expectedTag = RESPONSIVE_ACTIONS_ROW_TAG,
+            absentTag = RESPONSIVE_ACTIONS_COLUMN_TAG
+        )
+        assertFalse(
+            shouldStackActions(
+                availableWidth = 361.dp,
+                fontScale = 1f
+            )
+        )
+    }
+
+    private fun assertResponsiveLayoutTagAtWidth(
+        expectedTag: String,
+        absentTag: String
+    ) {
+        composeRule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(
+                    density = density.density,
+                    fontScale = 1f
+                )
+            ) {
+                ResponsiveActionContainer(
+                    primary = { modifier ->
+                        Button(onClick = {}, modifier = modifier) {
+                            Text("primary")
+                        }
+                    },
+                    secondary = { modifier ->
+                        Button(onClick = {}, modifier = modifier) {
+                            Text("secondary")
+                        }
+                    }
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(expectedTag)
+            .assertExists()
+        composeRule.onNodeWithTag(absentTag)
+            .assertDoesNotExist()
+    }
+
 }

@@ -18,7 +18,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34], qualifiers = "w600dp-h800dp")
+// Keep Robolectric qualifiers normalized: no leading/trailing whitespace.
+@Config(
+    sdk = [34],
+    qualifiers = "w600dp-h800dp"
+)
 class SyncStatusCardTest {
 
     @get:Rule
