@@ -68,19 +68,44 @@ class AnalysisStatusChipsTest {
             .assertIsDisplayed()
     }
 
+    @Test
+    @Config(sdk = [34], qualifiers = "w359dp-h800dp")
+    fun localizationStressAt359dpAnd2_0FontScaleKeepsFlowItemsVisibleAndSeparate() {
+        assertStatusChipLayoutAtWidth(
+            expectedTag = ANALYSIS_STATUS_CHIPS_WRAP_TAG,
+            absentTag = ANALYSIS_STATUS_CHIPS_GRID_TAG,
+            fontScale = 2.0f,
+            assertNoSemanticOverlap = true,
+            latestDrawNo = Int.MAX_VALUE,
+            recentN = Int.MAX_VALUE,
+            usePrizeIndex = false,
+            algorithmVersion = "analysis-engine-production-localized-2026-09-29-build-abcdef1234567890"
+        )
+    }
+
     private fun assertStatusChipLayoutAtWidth(
         expectedTag: String,
         absentTag: String,
         fontScale: Float = 1f,
-        assertNoSemanticOverlap: Boolean = false
+        assertNoSemanticOverlap: Boolean = false,
+        latestDrawNo: Int = 1234,
+        recentN: Int = 100,
+        usePrizeIndex: Boolean = true,
+        algorithmVersion: String = "test-v1"
     ) {
         val labels = listOf(
-            "최신 1234회",
-            "분석 100회",
-            "EV 사용",
-            "알고리즘 test-v1"
+            "최신 ${latestDrawNo}회",
+            "분석 ${recentN}회",
+            if (usePrizeIndex) "EV 사용" else "EV 미사용",
+            "알고리즘 $algorithmVersion"
         )
-        setStatusChips(fontScale = fontScale)
+        setStatusChips(
+            fontScale = fontScale,
+            latestDrawNo = latestDrawNo,
+            recentN = recentN,
+            usePrizeIndex = usePrizeIndex,
+            algorithmVersion = algorithmVersion
+        )
 
         composeRule.onNodeWithTag(expectedTag)
             .assertExists()
@@ -124,6 +149,9 @@ class AnalysisStatusChipsTest {
 
     private fun setStatusChips(
         fontScale: Float,
+        latestDrawNo: Int = 1234,
+        recentN: Int = 100,
+        usePrizeIndex: Boolean = true,
         algorithmVersion: String = "test-v1"
     ) {
         composeRule.setContent {
@@ -136,9 +164,9 @@ class AnalysisStatusChipsTest {
             ) {
                 MaterialTheme {
                     AnalysisStatusChips(
-                        latestDrawNo = 1234,
-                        recentN = 100,
-                        usePrizeIndex = true,
+                        latestDrawNo = latestDrawNo,
+                        recentN = recentN,
+                        usePrizeIndex = usePrizeIndex,
                         algorithmVersion = algorithmVersion
                     )
                 }

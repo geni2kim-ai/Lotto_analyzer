@@ -380,6 +380,8 @@ private fun AlgorithmStatusChip(
  *
  * Whitespace normalization belongs at the call site; this primitive intentionally
  * does not trim text so accidental leading/trailing spaces remain observable in tests.
+ * maxLines/overflow only constrain visual layout; they do not mutate the source text,
+ * so ellipsized labels still preserve their full value in Text semantics.
  */
 @Composable
 private fun StatusChip(

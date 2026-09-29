@@ -22,8 +22,8 @@ android {
         applicationId = "com.aimaestro.lottoanalyzer"
         minSdk = 26
         targetSdk = 36
-        versionCode = 14
-        versionName = "1.0.13"
+        versionCode = 15
+        versionName = "1.0.14"
     }
 
     signingConfigs {
@@ -94,6 +94,12 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation("androidx.core:core-ktx:1.12.0")
+
+    constraints {
+        implementation("androidx.fragment:fragment:1.8.9") {
+            because("Play Console flags the transitive Fragment 1.1.0 pulled by Play Services basement")
+        }
+    }
 
     val firebaseBom = platform("com.google.firebase:firebase-bom:33.2.0")
     implementation(firebaseBom)
