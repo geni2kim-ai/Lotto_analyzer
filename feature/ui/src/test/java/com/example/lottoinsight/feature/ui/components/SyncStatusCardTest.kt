@@ -4,13 +4,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.assertDoesNotExist
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.onNode
 import androidx.compose.ui.test.onNodeWithText
 import org.junit.Rule
 import org.junit.Test
