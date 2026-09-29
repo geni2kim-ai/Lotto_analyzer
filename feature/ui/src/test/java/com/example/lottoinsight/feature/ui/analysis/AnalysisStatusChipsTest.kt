@@ -38,16 +38,27 @@ class AnalysisStatusChipsTest {
         )
     }
 
+    @Test
+    @Config(sdk = [34], qualifiers = "w359dp-h800dp")
+    fun width359dpAt2_0FontScaleKeepsAllStatusChipsInWrapLayout() {
+        assertStatusChipLayoutAtWidth(
+            expectedTag = ANALYSIS_STATUS_CHIPS_WRAP_TAG,
+            absentTag = ANALYSIS_STATUS_CHIPS_GRID_TAG,
+            fontScale = 2.0f
+        )
+    }
+
     private fun assertStatusChipLayoutAtWidth(
         expectedTag: String,
-        absentTag: String
+        absentTag: String,
+        fontScale: Float = 1f
     ) {
         composeRule.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(
                 LocalDensity provides Density(
                     density = density.density,
-                    fontScale = 1f
+                    fontScale = fontScale
                 )
             ) {
                 MaterialTheme {
@@ -66,6 +77,8 @@ class AnalysisStatusChipsTest {
         composeRule.onNodeWithTag(absentTag)
             .assertDoesNotExist()
 
+        // onNodeWithText uses exact matching by default (substring = false), so
+        // trailing/leading whitespace in production labels would fail this assertion.
         listOf(
             "최신 1234회",
             "분석 100회",

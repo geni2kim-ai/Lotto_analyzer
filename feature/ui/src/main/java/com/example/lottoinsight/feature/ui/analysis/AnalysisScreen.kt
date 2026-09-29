@@ -364,6 +364,12 @@ internal fun AnalysisStatusChips(
     }
 }
 
+/**
+ * Renders the caller-provided label verbatim.
+ *
+ * Whitespace normalization belongs at the call site; this primitive intentionally
+ * does not trim text so accidental leading/trailing spaces remain observable in tests.
+ */
 @Composable
 private fun StatusChip(
     text: String,
