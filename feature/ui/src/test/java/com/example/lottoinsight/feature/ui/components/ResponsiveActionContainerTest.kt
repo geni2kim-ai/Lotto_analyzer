@@ -108,6 +108,11 @@ class ResponsiveActionContainerTest {
         )
     }
 
+    // Boundary precision contract: Robolectric wNNNdp qualifiers are assumed to map
+    // exactly to the same integer dp value observed by BoxWithConstraints.maxWidth.
+    // Tag assertions exercise that integrated layout path. The direct shouldStackActions
+    // assertions above anchor the threshold values, but because they call the production
+    // decision function itself they do not independently prove the qualifier mapping.
     private fun assertResponsiveLayoutTagAtWidth(
         expectedTag: String,
         absentTag: String

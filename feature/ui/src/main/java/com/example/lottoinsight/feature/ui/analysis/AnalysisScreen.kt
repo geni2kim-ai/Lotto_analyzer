@@ -3,6 +3,7 @@ package com.example.lottoinsight.feature.ui.analysis
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,6 +46,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -52,6 +55,10 @@ import com.example.lottoinsight.core.model.WeightConfig
 import com.example.lottoinsight.feature.analysis.AnalysisViewModel
 import com.example.lottoinsight.feature.ui.components.LottoBallRow
 import com.example.lottoinsight.feature.ui.components.ResponsiveActionContainer
+import com.example.lottoinsight.feature.ui.components.shouldStackActions
+
+internal const val ANALYSIS_STATUS_CHIPS_GRID_TAG = "analysis-status-chips-grid"
+internal const val ANALYSIS_STATUS_CHIPS_WRAP_TAG = "analysis-status-chips-wrap"
 
 @Composable
 fun AnalysisScreen(viewModel: AnalysisViewModel) {
@@ -283,38 +290,76 @@ private fun ReproducibilityInfo(
 }
 
 @Composable
-private fun AnalysisStatusChips(
+internal fun AnalysisStatusChips(
     latestDrawNo: Int,
     recentN: Int,
     usePrizeIndex: Boolean,
     algorithmVersion: String
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            StatusChip(
-                text = "최신 ${latestDrawNo}회",
-                modifier = Modifier.weight(1f)
-            )
-            StatusChip(
-                text = "분석 ${recentN}회",
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            StatusChip(
-                text = if (usePrizeIndex) "EV 사용" else "EV 미사용",
-                modifier = Modifier.weight(1f)
-            )
-            StatusChip(
-                text = "알고리즘 $algorithmVersion",
-                modifier = Modifier.weight(1f)
-            )
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val stackVertically = shouldStackActions(
+            availableWidth = maxWidth,
+            fontScale = LocalDensity.current.fontScale
+        )
+
+        if (stackVertically) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(ANALYSIS_STATUS_CHIPS_WRAP_TAG),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                StatusChip(
+                    text = "최신 ${latestDrawNo}회",
+                    modifier = Modifier.fillMaxWidth()
+                )
+                StatusChip(
+                    text = "분석 ${recentN}회",
+                    modifier = Modifier.fillMaxWidth()
+                )
+                StatusChip(
+                    text = if (usePrizeIndex) "EV 사용" else "EV 미사용",
+                    modifier = Modifier.fillMaxWidth()
+                )
+                StatusChip(
+                    text = "알고리즘 $algorithmVersion",
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(ANALYSIS_STATUS_CHIPS_GRID_TAG),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    StatusChip(
+                        text = "최신 ${latestDrawNo}회",
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatusChip(
+                        text = "분석 ${recentN}회",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    StatusChip(
+                        text = if (usePrizeIndex) "EV 사용" else "EV 미사용",
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatusChip(
+                        text = "알고리즘 $algorithmVersion",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
         }
     }
 }
