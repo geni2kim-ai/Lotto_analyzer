@@ -224,8 +224,9 @@ class AnalysisStatusChipsTest {
         interaction: SemanticsNodeInteraction
     ): List<String> {
         fun collect(node: androidx.compose.ui.semantics.SemanticsNode): List<String> {
-            val ownText = node.config.getOrNull(SemanticsProperties.Text)
-                .orEmpty()
+            val ownText = runCatching {
+                node.config[SemanticsProperties.Text]
+            }.getOrDefault(emptyList())
                 .map { it.text }
             return ownText + node.children.flatMap(::collect)
         }
