@@ -43,7 +43,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.lottoinsight.core.model.WeightConfig
@@ -144,15 +146,9 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                 usePrizeIndex = analysis.weightConfig.usePrizeIndex,
                 algorithmVersion = analysis.algorithmVersion
             )
-            Text(
-                text = "재현 seed: ${analysis.randomSeed}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "동일 데이터·설정·알고리즘 버전은 같은 seed와 추천 결과를 생성합니다.",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            ReproducibilityInfo(
+                algorithmVersion = analysis.algorithmVersion,
+                seed = analysis.randomSeed
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -216,6 +212,69 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReproducibilityInfo(
+    algorithmVersion: String,
+    seed: Long
+) {
+    var expanded by rememberSaveable(seed) { mutableStateOf(false) }
+    val clipboardManager = LocalClipboardManager.current
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "재현 정보",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                TextButton(onClick = { expanded = !expanded }) {
+                    Text(if (expanded) "닫기" else "보기")
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (expanded) "재현 정보 닫기" else "재현 정보 열기"
+                    )
+                }
+            }
+            if (expanded) {
+                Text(
+                    text = "알고리즘: $algorithmVersion",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    text = "Seed: $seed",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    text = "동일 데이터·적용 설정·알고리즘 버전은 같은 seed와 추천 결과를 생성합니다.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedButton(
+                    onClick = {
+                        clipboardManager.setText(
+                            AnnotatedString("algorithm=$algorithmVersion\nseed=$seed")
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("재현 정보 복사")
                 }
             }
         }

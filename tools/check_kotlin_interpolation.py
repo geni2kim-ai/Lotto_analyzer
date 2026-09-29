@@ -47,7 +47,7 @@ if violations:
     print("Kotlin interpolation convention violation(s):")
     for path, line_no, line, identifier in violations:
         print(f"  {path}:{line_no}: {line}")
-        print("    Use braced interpolation:  + identifier +  before Korean suffix text.")
+        print(f"    Use braced interpolation: ${{{identifier}}} before Korean suffix text.")
     sys.exit(1)
 
 print("Kotlin interpolation convention check passed.")

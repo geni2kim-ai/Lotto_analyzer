@@ -42,18 +42,12 @@ fun SyncStatusCard(
 ) {
     if (!isSyncing && message == null && !isFailed) return
 
-    val title = when {
-        isFailed -> "동기화 확인 필요"
-        isSyncing -> "데이터 동기화 중"
-        else -> "동기화 상태"
-    }
-    val announcement = buildString {
-        append(title)
-        message?.let { append(". ").append(it) }
-        if (failedDrawNos.isNotEmpty()) {
-            append(". 실패 회차 ").append(failedDrawNos.size).append("건")
-        }
-    }
+    val presentation = resolveSyncStatusPresentation(
+        isSyncing = isSyncing,
+        message = message,
+        isFailed = isFailed,
+        failedDrawCount = failedDrawNos.size
+    )
 
     Card(
         modifier = modifier.fillMaxWidth()
@@ -69,7 +63,7 @@ fun SyncStatusCard(
                     .fillMaxWidth()
                     .semantics(mergeDescendants = true) {
                         liveRegion = LiveRegionMode.Polite
-                        stateDescription = announcement
+                        stateDescription = presentation.announcement
                     },
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -79,21 +73,21 @@ fun SyncStatusCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector = when {
-                        isFailed -> Icons.Default.ErrorOutline
-                        isSyncing -> Icons.Default.Refresh
-                        else -> Icons.Default.CheckCircle
+                    imageVector = when (presentation.tone) {
+                        SyncStatusTone.FAILURE -> Icons.Default.ErrorOutline
+                        SyncStatusTone.ACTIVE -> Icons.Default.Refresh
+                        SyncStatusTone.NORMAL -> Icons.Default.CheckCircle
                     },
                     contentDescription = null,
-                    tint = when {
-                        isFailed -> MaterialTheme.colorScheme.error
-                        isSyncing -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.primary
+                    tint = when (presentation.tone) {
+                        SyncStatusTone.FAILURE -> MaterialTheme.colorScheme.error
+                        SyncStatusTone.ACTIVE,
+                        SyncStatusTone.NORMAL -> MaterialTheme.colorScheme.primary
                     },
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
-                    text = title,
+                    text = presentation.title,
                     style = MaterialTheme.typography.titleSmall
                 )
             }

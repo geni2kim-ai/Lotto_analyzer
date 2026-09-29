@@ -10,13 +10,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -35,6 +40,7 @@ import com.example.lottoinsight.feature.ui.components.SyncStatusCard
 fun StatisticsScreen(viewModel: StatisticsViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     var showAllEv by rememberSaveable { mutableStateOf(false) }
+    var criteriaExpanded by rememberSaveable { mutableStateOf(false) }
     val rankedIndexes = uiState.prizeIndexes.sortedBy { it.rank }
     val visibleIndexes = if (showAllEv) rankedIndexes else rankedIndexes.take(EV_PREVIEW_COUNT)
 
@@ -129,11 +135,31 @@ fun StatisticsScreen(viewModel: StatisticsViewModel) {
                                     rankedIndexes.take(3).joinToString(" · ") { "${it.number}번" },
                             style = MaterialTheme.typography.bodyMedium
                         )
-                        Text(
-                            text = "당첨금 누락 회차는 EV 유효 표본에서 제외하며 각 카드에 표본 수를 표시합니다.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        TextButton(
+                            onClick = { criteriaExpanded = !criteriaExpanded }
+                        ) {
+                            Icon(
+                                imageVector = if (criteriaExpanded) {
+                                    Icons.Default.ExpandLess
+                                } else {
+                                    Icons.Default.ExpandMore
+                                },
+                                contentDescription = null
+                            )
+                            Text("계산 기준")
+                        }
+                        if (criteriaExpanded) {
+                            val basis = if (uiState.expectedValueRunId != null) {
+                                "최근 ${uiState.expectedValueRecentN}회"
+                            } else {
+                                "저장된 전체 ${uiState.totalDrawsCount}회"
+                            }
+                            Text(
+                                text = "현재 표시 기준: $basis. 1등 당첨금이 null이거나 0 이하인 회차는 EV 유효 표본의 분모와 당첨금 평균에서 제외합니다.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
