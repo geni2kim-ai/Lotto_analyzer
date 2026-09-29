@@ -8,7 +8,7 @@ import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.createComposeRule
+import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.onNode
 import androidx.compose.ui.test.onNodeWithText
