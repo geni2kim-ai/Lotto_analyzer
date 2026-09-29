@@ -67,6 +67,14 @@ android {
     }
 }
 
+configurations.configureEach {
+    resolutionStrategy {
+        // P-1: Play Services basement requests Fragment 1.1.0 transitively.
+        // Keep the override app-scoped instead of broad Firebase/Compose upgrades.
+        force("androidx.fragment:fragment:1.9.1")
+    }
+}
+
 dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:model"))
@@ -94,12 +102,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation("androidx.core:core-ktx:1.12.0")
-
-    constraints {
-        implementation("androidx.fragment:fragment:1.8.9") {
-            because("Play Console flags the transitive Fragment 1.1.0 pulled by Play Services basement")
-        }
-    }
 
     val firebaseBom = platform("com.google.firebase:firebase-bom:33.2.0")
     implementation(firebaseBom)
