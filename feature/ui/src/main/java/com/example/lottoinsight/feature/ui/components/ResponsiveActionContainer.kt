@@ -25,7 +25,12 @@ internal fun ResponsiveActionContainer(
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val fontScale = LocalDensity.current.fontScale
-        val stackVertically = maxWidth < stackBelowWidth || fontScale >= stackAtFontScale
+        val stackVertically = shouldStackActions(
+            availableWidth = maxWidth,
+            fontScale = fontScale,
+            stackBelowWidth = stackBelowWidth,
+            stackAtFontScale = stackAtFontScale
+        )
 
         if (stackVertically) {
             Column(
@@ -50,3 +55,12 @@ internal fun ResponsiveActionContainer(
         }
     }
 }
+
+
+internal fun shouldStackActions(
+    availableWidth: Dp,
+    fontScale: Float,
+    stackBelowWidth: Dp = 360.dp,
+    stackAtFontScale: Float = 1.6f
+): Boolean =
+    availableWidth < stackBelowWidth || fontScale >= stackAtFontScale
