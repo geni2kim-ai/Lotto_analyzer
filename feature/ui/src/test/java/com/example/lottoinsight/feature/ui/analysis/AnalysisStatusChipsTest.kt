@@ -2,19 +2,15 @@ package com.example.lottoinsight.feature.ui.analysis
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.unit.Density
-import android.graphics.Bitmap
 import java.io.File
-import java.io.FileOutputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -23,7 +19,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -94,8 +89,13 @@ class AnalysisStatusChipsTest {
 
     @Test
     @Config(sdk = [34], qualifiers = "w359dp-h800dp")
-    @GraphicsMode(GraphicsMode.Mode.NATIVE)
-    fun u1Captures359dpAt2_0FontScaleFlowRowScreenshot() {
+    fun u1Records359dpAt2_0FontScaleLastRowGeometry() {
+        val labels = listOf(
+            "최신 2147483647회",
+            "분석 2147483647회",
+            "EV 미사용",
+            "알고리즘 analysis-engine-production-localized-2026-09-29-build-abcdef1234567890"
+        )
         setStatusChips(
             fontScale = 2.0f,
             latestDrawNo = Int.MAX_VALUE,
@@ -104,22 +104,38 @@ class AnalysisStatusChipsTest {
             algorithmVersion = "analysis-engine-production-localized-2026-09-29-build-abcdef1234567890"
         )
 
+        val wrapBounds = composeRule.onNodeWithTag(ANALYSIS_STATUS_CHIPS_WRAP_TAG)
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val labelBounds = labels.map { label ->
+            composeRule.onNodeWithText(label)
+                .fetchSemanticsNode()
+                .boundsInRoot
+        }
+        val lastRowTop = labelBounds.maxOf { it.top }
+        val lastRowBounds = labelBounds.filter { kotlin.math.abs(it.top - lastRowTop) < 1f }
+        val occupiedLeft = lastRowBounds.minOf { it.left }
+        val occupiedRight = lastRowBounds.maxOf { it.right }
+        val occupancyRatio = (occupiedRight - occupiedLeft) / wrapBounds.width
+
+        assertTrue(lastRowBounds.isNotEmpty())
+        assertTrue(occupancyRatio > 0f)
+        assertTrue(occupancyRatio <= 1.001f)
+
         val output = File(
             System.getProperty("user.dir"),
-            "feature/ui/build/reports/analysis-status-chips/u1-359dp-2x.png"
+            "feature/ui/build/reports/analysis-status-chips/u1-geometry.txt"
         )
         output.parentFile?.mkdirs()
-
-        FileOutputStream(output).use { stream ->
-            val compressed = composeRule
-                .onNodeWithTag(ANALYSIS_STATUS_CHIPS_WRAP_TAG)
-                .captureToImage()
-                .asAndroidBitmap()
-                .compress(Bitmap.CompressFormat.PNG, 100, stream)
-            assertTrue(compressed)
-        }
-        assertTrue(output.isFile)
-        assertTrue(output.length() > 0L)
+        output.writeText(
+            "last_row_item_count=" + lastRowBounds.size + "\n" +
+                "last_row_occupancy_ratio=" +
+                "%.4f".format(java.util.Locale.US, occupancyRatio) + "\n" +
+                "container_width_px=" +
+                "%.2f".format(java.util.Locale.US, wrapBounds.width) + "\n" +
+                "last_row_occupied_width_px=" +
+                "%.2f".format(java.util.Locale.US, occupiedRight - occupiedLeft) + "\n"
+        )
     }
 
     @Test

@@ -56,16 +56,8 @@ jobs:
       - name: Run debug unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
 
-      - name: Emit U1 FlowRow screenshot evidence
+      - name: Report U1 FlowRow geometry evidence
         run: |
-          screenshot="feature/ui/build/reports/analysis-status-chips/u1-359dp-2x.png"
-          test -s "$screenshot"
-          echo "U1 screenshot: $screenshot"
-          echo "U1_SCREENSHOT_BASE64=$(base64 -w0 "$screenshot")"
-
-      - name: Upload U1 FlowRow screenshot
-        uses: actions/upload-artifact@v4
-        with:
-          name: analysis-status-chips-u1
-          path: feature/ui/build/reports/analysis-status-chips/u1-359dp-2x.png
-          if-no-files-found: error
+          geometry="feature/ui/build/reports/analysis-status-chips/u1-geometry.txt"
+          test -s "$geometry"
+          cat "$geometry"
