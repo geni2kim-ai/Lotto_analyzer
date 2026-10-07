@@ -119,3 +119,25 @@ Resolution:
 - clear the EV completion message when the associated saved-run provenance is invalidated;
 - preserve unrelated active sync messages;
 - extend the statistics regression test to assert the stale completion message is removed.
+
+
+## 6. Verification history / dogfood backdata
+
+The candidate was intentionally not declared complete after the first patch. Each new HEAD was re-bound to its own evidence.
+
+- `caf28542...`: first candidate.
+- Independent Codex review found X1/X2 (both P2); both accepted and fixed.
+- `45ea9e30...`: state-race/provenance fixes. Independent Codex re-review: no major issues.
+- CI #63 on `45ea9e30...`: **FAIL** at `assembleDebug` because the intended `Constants.ALGORITHM_VERSION` migration lacked the actual `Constants` import.
+- `4cc63b30...`: import fixed and source re-fetched to verify import + canonical constant use.
+- CI #64 on `4cc63b30...`: `assembleDebug` PASS, unit-test compilation **FAIL** because two new fake repositories used `?.let(AppResult::Success)`.
+- `a4a80365...`: both test constructor references changed to `?.let { AppResult.Success(it) }` and re-fetched to verify no bad reference remains.
+- CI #65 on `a4a80365...`: **SUCCESS** — Fragment resolution gate, `assembleDebug`, all debug unit-test tasks, and U1 geometry evidence all passed.
+
+Dogfood failure-family candidates for Leonardo/backdata:
+- `REVIEW-INTENT-DRIFT/IMPORT`: code edit references a symbol but required import was not in the actual diff.
+- `REVIEW-STATE-RACE/ASYNC-SAVE`: prior asynchronous save outcome can corrupt newer UI state.
+- `REVIEW-PROVENANCE/STALE-MESSAGE`: provenance fields reset while explanatory UI text remains stale.
+- `TEST-HARNESS/KOTLIN-CONSTRUCTOR-REF`: production build passes but newly added test fake fails to compile.
+
+These are evidence-generation cases, not model-weight training claims.
