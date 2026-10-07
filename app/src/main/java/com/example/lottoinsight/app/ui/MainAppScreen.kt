@@ -41,7 +41,7 @@ fun MainAppScreen(
     historyViewModel: HistoryViewModel,
     statisticsViewModel: StatisticsViewModel
 ) {
-    var selectedTab by remember { mutableStateOf(AppTab.ANALYSIS) }
+    var selectedTab by rememberSaveable { mutableStateOf(AppTab.ANALYSIS) }
 
     Scaffold(
         bottomBar = {

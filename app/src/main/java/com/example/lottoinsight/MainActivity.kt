@@ -1,8 +1,11 @@
 package com.example.lottoinsight
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.room.Room
 import com.example.lottoinsight.app.ui.MainAppScreen
 import com.example.lottoinsight.core.data.repository.AnalysisRepositoryImpl
@@ -26,31 +29,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val db = Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java,
-            AppDatabase.DATABASE_NAME
-        ).build()
-
-        val retrofit = Retrofit.Builder()
-            .baseUrl(LottoApiService.BASE_URL)
-            .addConverterFactory(ScalarsConverterFactory.create())
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-
-        val apiService = retrofit.create(LottoApiService::class.java)
-        val remoteDataSource = LottoRemoteDataSourceImpl(apiService)
-
-        val lottoRepository = LottoRepositoryImpl(db.drawDao(), remoteDataSource)
-        val analysisRepository = AnalysisRepositoryImpl(db.analysisDao())
-        val expectedValueRepository = ExpectedValueRepositoryImpl(db.expectedValueDao())
-
-        val analysisEngine = AnalysisEngineImpl()
-
-        val analysisViewModel = AnalysisViewModel(lottoRepository, analysisRepository, analysisEngine)
-        val databaseViewModel = DatabaseViewModel(lottoRepository)
-        val historyViewModel = HistoryViewModel(analysisRepository)
-        val statisticsViewModel = StatisticsViewModel(lottoRepository, expectedValueRepository)
+        val provider = ViewModelProvider(
+            this,
+            LottoViewModelFactory(applicationContext)
+        )
+        val analysisViewModel = provider[AnalysisViewModel::class.java]
+        val databaseViewModel = provider[DatabaseViewModel::class.java]
+        val historyViewModel = provider[HistoryViewModel::class.java]
+        val statisticsViewModel = provider[StatisticsViewModel::class.java]
 
         setContent {
             LottoInsightTheme {
@@ -61,6 +47,50 @@ class MainActivity : ComponentActivity() {
                     statisticsViewModel = statisticsViewModel
                 )
             }
+        }
+    }
+}
+
+private class LottoViewModelFactory(
+    context: Context
+) : ViewModelProvider.Factory {
+    private val appContext = context.applicationContext
+
+    private val db by lazy {
+        Room.databaseBuilder(
+            appContext,
+            AppDatabase::class.java,
+            AppDatabase.DATABASE_NAME
+        ).build()
+    }
+
+    private val apiService by lazy {
+        Retrofit.Builder()
+            .baseUrl(LottoApiService.BASE_URL)
+            .addConverterFactory(ScalarsConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(LottoApiService::class.java)
+    }
+
+    private val remoteDataSource by lazy { LottoRemoteDataSourceImpl(apiService) }
+    private val lottoRepository by lazy { LottoRepositoryImpl(db.drawDao(), remoteDataSource) }
+    private val analysisRepository by lazy { AnalysisRepositoryImpl(db.analysisDao()) }
+    private val expectedValueRepository by lazy { ExpectedValueRepositoryImpl(db.expectedValueDao()) }
+    private val analysisEngine by lazy { AnalysisEngineImpl() }
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return when {
+            modelClass.isAssignableFrom(AnalysisViewModel::class.java) ->
+                AnalysisViewModel(lottoRepository, analysisRepository, analysisEngine) as T
+            modelClass.isAssignableFrom(DatabaseViewModel::class.java) ->
+                DatabaseViewModel(lottoRepository) as T
+            modelClass.isAssignableFrom(HistoryViewModel::class.java) ->
+                HistoryViewModel(analysisRepository) as T
+            modelClass.isAssignableFrom(StatisticsViewModel::class.java) ->
+                StatisticsViewModel(lottoRepository, expectedValueRepository) as T
+            else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
     }
 }

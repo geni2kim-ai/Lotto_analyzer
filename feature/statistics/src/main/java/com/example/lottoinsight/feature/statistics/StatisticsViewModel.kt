@@ -192,7 +192,12 @@ class StatisticsViewModel(
                     isLoading = false,
                     totalDrawsCount = 0,
                     latestDrawNo = 0,
-                    calendarStats = null
+                    frequencyMap = emptyMap(),
+                    oddEvenRatio = 0 to 0,
+                    prizeIndexes = emptyList(),
+                    calendarStats = null,
+                    expectedValueRunId = null,
+                    expectedValueRecentN = Constants.DEFAULT_RECENT_N
                 )
             }
             return
@@ -210,27 +215,33 @@ class StatisticsViewModel(
                 frequencyMap = frequencies,
                 oddEvenRatio = parityRatio,
                 prizeIndexes = prizeIndexes,
-                calendarStats = null
+                calendarStats = null,
+                expectedValueRunId = null,
+                expectedValueRecentN = Constants.DEFAULT_RECENT_N
             )
         }
     }
 
     fun calculateAndSaveExpectedValues(recentN: Int = Constants.DEFAULT_RECENT_N) {
         if (_uiState.value.isExpectedValueSaving) return
+        _uiState.update { it.copy(isExpectedValueSaving = true, userMessage = null) }
 
         viewModelScope.launch {
-            val draws = lottoRepository.observeAllDraws().first()
-            if (draws.size < Constants.MIN_REQUIRED_DRAWS_FOR_ANALYSIS) {
-                _uiState.update { it.copy(userMessage = "기대값 계산에는 당첨번호 데이터가 필요합니다.") }
-                return@launch
-            }
-
-            val effectiveRecentN = minOf(recentN.coerceAtLeast(1), draws.size)
-            val selectedDraws = draws.sortedByDescending { it.drawNo }.take(effectiveRecentN)
-            val indexes = PrizeIndexCalculator.calculateHistoricalPrizeIndexes(selectedDraws)
-            _uiState.update { it.copy(isExpectedValueSaving = true, userMessage = null) }
-
             try {
+                val draws = lottoRepository.observeAllDraws().first()
+                if (draws.size < Constants.MIN_REQUIRED_DRAWS_FOR_ANALYSIS) {
+                    _uiState.update {
+                        it.copy(
+                            isExpectedValueSaving = false,
+                            userMessage = "기대값 계산에는 당첨번호 데이터가 필요합니다."
+                        )
+                    }
+                    return@launch
+                }
+
+                val effectiveRecentN = minOf(recentN.coerceAtLeast(1), draws.size)
+                val selectedDraws = draws.sortedByDescending { it.drawNo }.take(effectiveRecentN)
+                val indexes = PrizeIndexCalculator.calculateHistoricalPrizeIndexes(selectedDraws)
                 when (
                     val saveResult = expectedValueRepository.saveExpectedValueRun(
                         recentN = effectiveRecentN,

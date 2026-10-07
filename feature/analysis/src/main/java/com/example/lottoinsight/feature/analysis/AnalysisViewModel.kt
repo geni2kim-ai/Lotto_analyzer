@@ -30,9 +30,10 @@ class AnalysisViewModel(
     }
 
     fun runAnalysisAndGenerate() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, userMessage = null, isSavedSuccess = false) }
+        if (_uiState.value.isLoading) return
+        _uiState.update { it.copy(isLoading = true, userMessage = null, isSavedSuccess = false) }
 
+        viewModelScope.launch {
             try {
                 val draws = ensureDrawsAvailable()
                 if (draws.isEmpty()) {
@@ -91,8 +92,26 @@ class AnalysisViewModel(
             algorithmVersion = result.algorithmVersion,
             games = result.games
         )
-        if (saveResult is AppResult.Success) {
-            _uiState.update { it.copy(isSavedSuccess = true) }
+        when (saveResult) {
+            is AppResult.Success -> {
+                _uiState.update { it.copy(isSavedSuccess = true) }
+            }
+            is AppResult.Error -> {
+                _uiState.update {
+                    it.copy(
+                        isSavedSuccess = false,
+                        userMessage = "Generated ${result.games.size} games, but failed to save analysis history."
+                    )
+                }
+            }
+            is AppResult.Loading -> {
+                _uiState.update {
+                    it.copy(
+                        isSavedSuccess = false,
+                        userMessage = "Generated ${result.games.size} games; analysis history is still being saved."
+                    )
+                }
+            }
         }
     }
 

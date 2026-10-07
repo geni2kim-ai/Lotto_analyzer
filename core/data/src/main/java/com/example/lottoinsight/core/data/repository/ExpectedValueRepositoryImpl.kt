@@ -32,7 +32,7 @@ class ExpectedValueRepositoryImpl(
                 createdAt = System.currentTimeMillis(),
                 latestDrawNo = latestDrawNo,
                 recentN = recentN,
-                algorithmVersion = "1.0.0"
+                algorithmVersion = Constants.ALGORITHM_VERSION
             )
 
             val numberEntities = numbers.map { ExpectedValueNumberEntity.fromDomain(0, it) }
