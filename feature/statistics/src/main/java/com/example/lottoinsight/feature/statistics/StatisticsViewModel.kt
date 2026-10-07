@@ -207,8 +207,8 @@ class StatisticsViewModel(
         val parityRatio = calculateParityTotals(draws)
         val prizeIndexes = PrizeIndexCalculator.calculateHistoricalPrizeIndexes(draws)
 
-        _uiState.update {
-            it.copy(
+        _uiState.update { current ->
+            current.copy(
                 isLoading = false,
                 totalDrawsCount = draws.size,
                 latestDrawNo = draws.maxOfOrNull { draw -> draw.drawNo } ?: 0,
@@ -217,7 +217,15 @@ class StatisticsViewModel(
                 prizeIndexes = prizeIndexes,
                 calendarStats = null,
                 expectedValueRunId = null,
-                expectedValueRecentN = Constants.DEFAULT_RECENT_N
+                expectedValueRecentN = Constants.DEFAULT_RECENT_N,
+                syncMessage = if (
+                    current.expectedValueRunId != null &&
+                    current.syncMessage?.startsWith(EXPECTED_VALUE_COMPLETION_PREFIX) == true
+                ) {
+                    null
+                } else {
+                    current.syncMessage
+                }
             )
         }
     }
@@ -316,5 +324,6 @@ class StatisticsViewModel(
 
     private companion object {
         const val MAX_VISIBLE_FAILED_DRAWS = 6
+        const val EXPECTED_VALUE_COMPLETION_PREFIX = "기대값 계산 완료:"
     }
 }

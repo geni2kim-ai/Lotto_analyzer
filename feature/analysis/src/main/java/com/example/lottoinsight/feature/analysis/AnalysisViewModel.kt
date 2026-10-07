@@ -50,9 +50,8 @@ class AnalysisViewModel(
                         val result = engineResult.data
                         _uiState.update {
                             it.copy(
-                                isLoading = false,
                                 latestAnalysisResult = result,
-                                userMessage = "Generated ${result.games.size} games successfully!"
+                                userMessage = "Generated ${result.games.size} games. Saving analysis history…"
                             )
                         }
                         saveAnalysisRun(result)
@@ -99,11 +98,18 @@ class AnalysisViewModel(
         )
         when (saveResult) {
             is AppResult.Success -> {
-                _uiState.update { it.copy(isSavedSuccess = true) }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isSavedSuccess = true,
+                        userMessage = "Generated ${result.games.size} games successfully!"
+                    )
+                }
             }
             is AppResult.Error -> {
                 _uiState.update {
                     it.copy(
+                        isLoading = false,
                         isSavedSuccess = false,
                         userMessage = "Generated ${result.games.size} games, but failed to save analysis history."
                     )
@@ -112,6 +118,7 @@ class AnalysisViewModel(
             is AppResult.Loading -> {
                 _uiState.update {
                     it.copy(
+                        isLoading = false,
                         isSavedSuccess = false,
                         userMessage = "Generated ${result.games.size} games, but analysis history save did not complete."
                     )

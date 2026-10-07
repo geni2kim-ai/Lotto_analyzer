@@ -55,12 +55,17 @@ class StatisticsViewModelTest {
         assertEquals(1, expectedValueRepository.saveCalls)
         assertEquals(77L, viewModel.uiState.value.expectedValueRunId)
         assertEquals(5, viewModel.uiState.value.expectedValueRecentN)
+        assertEquals(
+            "기대값 계산 완료: 최근 5회 기준",
+            viewModel.uiState.value.syncMessage
+        )
 
         drawFlow.value = draws(11)
         testScheduler.advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.expectedValueRunId)
         assertEquals(100, viewModel.uiState.value.expectedValueRecentN)
+        assertNull(viewModel.uiState.value.syncMessage)
         assertEquals(11, viewModel.uiState.value.totalDrawsCount)
     }
 

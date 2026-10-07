@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -66,6 +67,39 @@ class AnalysisViewModelTest {
     }
 
     @Test
+    fun generationRemainsReservedUntilHistorySaveCompletes() = runTest(dispatcher) {
+        val saveGate = CompletableDeferred<Unit>()
+        val repository = FakeAnalysisRepository(
+            saveResult = AppResult.Success(1L),
+            saveGate = saveGate
+        )
+        val engine = FakeAnalysisEngine(analysisResult())
+        val viewModel = AnalysisViewModel(
+            lottoRepository = FakeLottoRepository(draws(10)),
+            analysisRepository = repository,
+            analysisEngine = engine
+        )
+
+        viewModel.runAnalysisAndGenerate()
+        testScheduler.runCurrent()
+
+        assertTrue(viewModel.uiState.value.isLoading)
+        assertEquals(1, engine.calls)
+        assertEquals(1, repository.saveCalls)
+
+        viewModel.runAnalysisAndGenerate()
+        testScheduler.runCurrent()
+        assertEquals(1, engine.calls)
+        assertEquals(1, repository.saveCalls)
+
+        saveGate.complete(Unit)
+        testScheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isLoading)
+        assertTrue(viewModel.uiState.value.isSavedSuccess)
+    }
+
+    @Test
     fun duplicateRequestBeforeWorkerRunsIsIgnored() = runTest(dispatcher) {
         val repository = FakeAnalysisRepository(saveResult = AppResult.Success(1L))
         val engine = FakeAnalysisEngine(analysisResult())
@@ -104,7 +138,8 @@ class AnalysisViewModelTest {
     }
 
     private class FakeAnalysisRepository(
-        private val saveResult: AppResult<Long>
+        private val saveResult: AppResult<Long>,
+        private val saveGate: CompletableDeferred<Unit>? = null
     ) : AnalysisRepository {
         var saveCalls: Int = 0
             private set
@@ -119,6 +154,7 @@ class AnalysisViewModelTest {
             games: List<LottoGame>
         ): AppResult<Long> {
             saveCalls++
+            saveGate?.await()
             return saveResult
         }
 

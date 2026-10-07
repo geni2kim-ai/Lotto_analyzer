@@ -96,3 +96,26 @@ ExpectedValueRunEntity 저장 시 `algorithmVersion = "1.0.0"`이 하드코딩�
 4. U1 FlowRow geometry evidence step 유지.
 5. v2.5 SHADOW 기준으로 변경 diff를 L2 재검토.
 6. 완료 후 `evidence/evidence_v1.0.16.md`에 final commit/CI run 및 finding resolution 기록.
+
+
+## 5. Independent Codex cross-check findings
+
+PR #1 independent Codex review on the first candidate commit found two additional P2 issues. Both were accepted as valid higher-layer findings and fixed before merge.
+
+### X1 — analysis save result could overwrite a newer run
+
+The generated result previously cleared `isLoading` before its history save completed. A second generation could therefore start, and a late save failure from the older run could overwrite the newer run's save/message state.
+
+Resolution:
+- keep the generation reservation active through persistence;
+- set the final success/error/incomplete state only when that run's save finishes;
+- add `generationRemainsReservedUntilHistorySaveCompletes` regression coverage.
+
+### X2 — stale EV completion message survived provenance reset
+
+When the draw dataset changed, `expectedValueRunId` and the displayed basis were cleared, but an old `기대값 계산 완료: 최근 N회 기준` message could remain visible.
+
+Resolution:
+- clear the EV completion message when the associated saved-run provenance is invalidated;
+- preserve unrelated active sync messages;
+- extend the statistics regression test to assert the stale completion message is removed.
