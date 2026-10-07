@@ -173,7 +173,7 @@ class AnalysisViewModelTest {
         override fun observeAllDraws(): Flow<List<Draw>> = flowOf(values)
         override fun observeLatestDraw(): Flow<Draw?> = flowOf(values.maxByOrNull { it.drawNo })
         override suspend fun getDrawByNo(drawNo: Int): AppResult<Draw> =
-            values.firstOrNull { it.drawNo == drawNo }?.let(AppResult::Success)
+            values.firstOrNull { it.drawNo == drawNo }?.let { AppResult.Success(it) }
                 ?: AppResult.Error(AppError.InvalidDraw(drawNo, "missing"))
 
         override suspend fun fetchAndSaveLatestDraws(fetchCount: Int): AppResult<Int> =

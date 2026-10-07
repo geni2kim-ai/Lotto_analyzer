@@ -95,7 +95,7 @@ class StatisticsViewModelTest {
             flowOf(drawFlow.value.maxByOrNull { it.drawNo })
 
         override suspend fun getDrawByNo(drawNo: Int): AppResult<Draw> =
-            drawFlow.value.firstOrNull { it.drawNo == drawNo }?.let(AppResult::Success)
+            drawFlow.value.firstOrNull { it.drawNo == drawNo }?.let { AppResult.Success(it) }
                 ?: AppResult.Error(AppError.InvalidDraw(drawNo, "missing"))
 
         override suspend fun fetchAndSaveLatestDraws(fetchCount: Int): AppResult<Int> =
