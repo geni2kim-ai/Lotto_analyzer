@@ -11,4 +11,6 @@ interface ExpectedValueRepository {
     ): AppResult<Long>
 
     suspend fun getLatestExpectedValueNumbers(recentN: Int): AppResult<List<HistoricalPrizeIndex>>
+
+    suspend fun deleteExpectedValueRun(runId: Long): AppResult<Unit>
 }

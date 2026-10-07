@@ -264,12 +264,17 @@ class StatisticsViewModel(
                             .take(minOf(effectiveRecentN, currentDraws.size))
 
                         if (currentSelectedDraws != selectedDraws) {
+                            val cleanupResult = expectedValueRepository.deleteExpectedValueRun(saveResult.data)
                             _uiState.update {
                                 it.copy(
                                     isExpectedValueSaving = false,
                                     expectedValueRunId = null,
                                     expectedValueRecentN = Constants.DEFAULT_RECENT_N,
-                                    userMessage = "당첨번호 데이터가 갱신되어 이전 기준의 기대값 결과를 적용하지 않았습니다. 다시 계산해 주세요."
+                                    userMessage = if (cleanupResult is AppResult.Success) {
+                                        "당첨번호 데이터가 갱신되어 이전 기준의 기대값 결과를 적용하지 않았습니다. 다시 계산해 주세요."
+                                    } else {
+                                        "당첨번호 데이터가 갱신되어 이전 기준의 기대값 결과를 적용하지 않았습니다. 오래된 저장 기록 정리에도 실패했습니다."
+                                    }
                                 )
                             }
                             return@launch

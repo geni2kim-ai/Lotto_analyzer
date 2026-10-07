@@ -32,4 +32,7 @@ interface ExpectedValueDao {
 
     @Query("SELECT * FROM expected_value_numbers WHERE runId = :runId ORDER BY number ASC")
     suspend fun getNumbersForRun(runId: Long): List<ExpectedValueNumberEntity>
+
+    @Query("DELETE FROM expected_value_runs WHERE id = :runId")
+    suspend fun deleteRun(runId: Long)
 }

@@ -40,9 +40,21 @@ class ExpectedValueRepositoryImplTest {
         assertEquals(42L, (result as AppResult.Success).data)
     }
 
+    @Test
+    fun deleteExpectedValueRunDeletesPersistedRun() = runBlocking {
+        val dao = FakeExpectedValueDao()
+        val repository = ExpectedValueRepositoryImpl(dao)
+
+        val result = repository.deleteExpectedValueRun(42L)
+
+        assertTrue(result is AppResult.Success)
+        assertEquals(listOf(42L), dao.deletedRunIds)
+    }
+
     private class FakeExpectedValueDao : ExpectedValueDao {
         var lastRun: ExpectedValueRunEntity? = null
             private set
+        val deletedRunIds = mutableListOf<Long>()
 
         override suspend fun insertRun(run: ExpectedValueRunEntity): Long {
             lastRun = run
@@ -58,5 +70,9 @@ class ExpectedValueRepositoryImplTest {
 
         override suspend fun getNumbersForRun(runId: Long): List<ExpectedValueNumberEntity> =
             emptyList()
+
+        override suspend fun deleteRun(runId: Long) {
+            deletedRunIds += runId
+        }
     }
 }

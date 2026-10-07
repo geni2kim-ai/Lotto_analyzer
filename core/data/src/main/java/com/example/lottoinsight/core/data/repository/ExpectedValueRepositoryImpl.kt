@@ -46,6 +46,21 @@ class ExpectedValueRepositoryImpl(
         }
     }
 
+    override suspend fun deleteExpectedValueRun(runId: Long): AppResult<Unit> {
+        if (runId <= 0) {
+            return AppResult.Error(AppError.DatabaseError("Invalid expected value runId: $runId"))
+        }
+
+        return try {
+            expectedValueDao.deleteRun(runId)
+            AppResult.Success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppResult.Error(AppError.DatabaseError("Failed to delete expected value run $runId"))
+        }
+    }
+
     override suspend fun getLatestExpectedValueNumbers(recentN: Int): AppResult<List<HistoricalPrizeIndex>> {
         if (recentN <= 0) {
             return AppResult.Error(AppError.InsufficientData)

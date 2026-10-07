@@ -100,6 +100,7 @@ class StatisticsViewModelTest {
         assertNull(state.expectedValueRunId)
         assertEquals(100, state.expectedValueRecentN)
         assertEquals(11, state.totalDrawsCount)
+        assertEquals(listOf(77L), expectedValueRepository.deletedRunIds)
         assertTrue(state.userMessage?.contains("이전 기준의 기대값 결과를 적용하지 않았습니다") == true)
     }
 
@@ -108,6 +109,7 @@ class StatisticsViewModelTest {
     ) : ExpectedValueRepository {
         var saveCalls: Int = 0
             private set
+        val deletedRunIds = mutableListOf<Long>()
 
         override suspend fun saveExpectedValueRun(
             recentN: Int,
@@ -122,6 +124,11 @@ class StatisticsViewModelTest {
         override suspend fun getLatestExpectedValueNumbers(
             recentN: Int
         ): AppResult<List<HistoricalPrizeIndex>> = AppResult.Success(emptyList())
+
+        override suspend fun deleteExpectedValueRun(runId: Long): AppResult<Unit> {
+            deletedRunIds += runId
+            return AppResult.Success(Unit)
+        }
     }
 
     private class FakeLottoRepository(
