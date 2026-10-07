@@ -258,6 +258,23 @@ class StatisticsViewModel(
                     )
                 ) {
                     is AppResult.Success -> {
+                        val currentDraws = lottoRepository.observeAllDraws().first()
+                        val currentSelectedDraws = currentDraws
+                            .sortedByDescending { it.drawNo }
+                            .take(minOf(effectiveRecentN, currentDraws.size))
+
+                        if (currentSelectedDraws != selectedDraws) {
+                            _uiState.update {
+                                it.copy(
+                                    isExpectedValueSaving = false,
+                                    expectedValueRunId = null,
+                                    expectedValueRecentN = Constants.DEFAULT_RECENT_N,
+                                    userMessage = "당첨번호 데이터가 갱신되어 이전 기준의 기대값 결과를 적용하지 않았습니다. 다시 계산해 주세요."
+                                )
+                            }
+                            return@launch
+                        }
+
                         _uiState.update {
                             it.copy(
                                 isExpectedValueSaving = false,
