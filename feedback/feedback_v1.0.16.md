@@ -141,3 +141,30 @@ Dogfood failure-family candidates for Leonardo/backdata:
 - `TEST-HARNESS/KOTLIN-CONSTRUCTOR-REF`: production build passes but newly added test fake fails to compile.
 
 These are evidence-generation cases, not model-weight training claims.
+
+
+## 7. X3 follow-up — concurrent draw refresh during EV save
+
+A later independent Codex review of `a4a80365...` found another P2:
+
+- while `saveExpectedValueRun` is suspended, another tab can finish draw refresh;
+- the draw observer updates statistics/provenance for the new dataset;
+- the old EV save then completes and could restore old indexes/runId over the new dataset.
+
+Resolution:
+1. after EV persistence completes, re-read the current draw snapshot;
+2. compare it with the exact snapshot used for EV calculation;
+3. if they differ, do not restore EV indexes/run provenance;
+4. delete the just-created stale EV run so it cannot remain as the newest persisted record from that race;
+5. ask the user to recalculate;
+6. regression-test the race with a suspended fake save and a draw-flow update.
+
+Commits:
+- `80301f95...`: freshness guard + concurrent-refresh regression.
+- `e22d3b46...`: stale persisted-run cleanup + DAO/repository regression.
+
+Verification:
+- CI #67 on `80301f95...`: SUCCESS.
+- CI #68 on `e22d3b46...`: SUCCESS.
+
+Independent latest-head re-review was requested after #67, but GitHub Codex returned a usage-limit message instead of a review. This is recorded as reviewer-capacity BLOCKED, not PASS.

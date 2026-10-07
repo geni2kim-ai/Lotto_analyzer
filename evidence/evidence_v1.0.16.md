@@ -3,50 +3,67 @@
 Repository: `geni2kim-ai/Lotto_analyzer`  
 PR: #1 — `review/lotto-v1.0.16` -> `main`  
 Base SHA: `59292715a83c0dafca40821fd7fcc17b057cb2a8`  
-Validated code SHA: `a4a80365bf6a1f80e916261232b5321df099c56e`  
+Validated code SHA: `e22d3b46772234fba5d921009ccfedc49b0d6a5e`  
 Version: `1.0.16` / versionCode `17`  
 Review mode: PR-with-codediff-finder v2.5 stable SHADOW dogfood
 
-## 1. Final code changes
+> This evidence file is documentation written after the validated code SHA. It does not claim that a documentation-only evidence commit changes the validated production code.
 
-### H1 — ViewModel lifecycle ownership
+## 1. Resolved source findings
+
+### H1 — unmanaged ViewModel lifecycle
 Resolved.
 
-`MainActivity` no longer constructs the four ViewModels directly. It obtains them through `ViewModelProvider(this, LottoViewModelFactory(...))`, binding them to the Activity `ViewModelStore`. The dependency graph in the factory is lazy, so a configuration recreation that reuses existing ViewModels does not eagerly construct an unused replacement graph.
+`MainActivity` now obtains Analysis/Database/History/Statistics ViewModels through `ViewModelProvider` bound to the Activity `ViewModelStore`, instead of constructing them directly. The dependency graph in the custom factory is lazy.
 
-Affected:
-- `app/src/main/java/com/example/lottoinsight/MainActivity.kt`
-
-### M1 — Expected-value algorithm lineage
+### M1 — ExpectedValue algorithmVersion lineage mismatch
 Resolved.
 
-`ExpectedValueRunEntity.algorithmVersion` now uses the canonical `Constants.ALGORITHM_VERSION` rather than the stale literal `"1.0.0"`.
+Expected-value runs now persist `Constants.ALGORITHM_VERSION` rather than stale literal `"1.0.0"`.
 
 Regression:
 - `ExpectedValueRepositoryImplTest.saveExpectedValueRunUsesCurrentAlgorithmVersion`
 
-### M2 / X1 — Analysis save visibility + async race
+### M2 / X1 — generated analysis save visibility and async state race
 Resolved.
 
-The analysis action is reserved synchronously before launching work, remains reserved until history persistence completes, and surfaces save failure/incomplete state instead of leaving a false success impression. This also prevents an older save result from overwriting the state of a newer run.
+- generation reservation is set before launching work;
+- it remains active through history persistence;
+- save failure/incomplete state is surfaced;
+- an older save cannot complete after a newer generation and overwrite its state.
 
 Regressions:
 - `saveFailureIsSurfacedWithoutDiscardingGeneratedResult`
 - `duplicateRequestBeforeWorkerRunsIsIgnored`
 - `generationRemainsReservedUntilHistorySaveCompletes`
 
-### M3 / X2 — Expected-value provenance invalidation
+### M3 / X2 — stale EV provenance/message after draw refresh
 Resolved.
 
-When the shared draw dataset changes, the displayed EV values are recomputed for that dataset and saved-run provenance is invalidated. A stale EV completion message is cleared at the same time, while unrelated sync messages are preserved.
+When the draw dataset changes, saved-run provenance is invalidated and the old EV completion message is cleared with it, while unrelated sync messages remain intact.
 
 Regression:
 - `savedExpectedValueBasisIsClearedWhenDrawDatasetChanges`
 
-### M4 — one-shot Loading fail-closed handling
+### X3 — stale EV save completion after concurrent draw refresh
 Resolved.
 
-One-shot engine/repository calls no longer leave UI busy flags permanently set when an unexpected `AppResult.Loading` is returned. Callers terminate the attempt with a retryable incomplete/failure message.
+If draw data changes while `saveExpectedValueRun` is suspended:
+
+1. current draw data is re-read after persistence;
+2. the current selected snapshot is compared with the snapshot used for calculation;
+3. a mismatch prevents the old indexes/runId from being restored;
+4. the newly persisted stale run is deleted through `deleteExpectedValueRun`;
+5. the UI remains bound to the refreshed draw dataset and asks for recalculation.
+
+Regressions:
+- `staleSaveCompletionDoesNotRestoreExpectedValueProvenanceAfterDrawRefresh`
+- `deleteExpectedValueRunDeletesPersistedRun`
+
+### M4 — one-shot AppResult.Loading could leave permanent busy state
+Resolved.
+
+Unexpected `AppResult.Loading` from one-shot calls is treated as an incomplete terminal attempt and busy flags are cleared with a retryable message.
 
 Affected:
 - AnalysisViewModel
@@ -54,81 +71,129 @@ Affected:
 - StatisticsViewModel
 - DatabaseViewModel
 
-### L1 — selected tab recreation
+### L1 — selected tab lost on recreation
 Resolved.
 
-`MainAppScreen` uses `rememberSaveable` for the selected tab.
+`MainAppScreen` now stores selected tab with `rememberSaveable`.
 
-## 2. Independent review
+## 2. Independent review history
 
-The first independent Codex review of PR #1 found two P2 findings:
+### First independent review
+Reviewed early candidate `caf28542...`.
 
-1. analysis save result could overwrite a newer run;
-2. stale EV completion text could survive provenance reset.
+Found two P2 issues:
+- X1: analysis save completion race;
+- X2: stale EV completion message/provenance.
 
-Both were accepted, fixed in `45ea9e30e30df265802ea16890a532daeab5c72d`, regression-covered, replied to, and the review threads were resolved.
+Both were accepted, fixed, regression-covered, replied to, and their review threads were resolved.
 
-A subsequent Codex review of `45ea9e30...` reported **no major issues**.
+### Second independent review
+Reviewed `45ea9e30...`.
 
-After that semantic-review point, later changes were limited to:
-- adding the missing `Constants` import required for compilation;
-- correcting two constructor-reference expressions in newly added tests.
+Result: **no major issues**.
 
-A fresh Codex re-review was requested on the latest PR after CI #65; its completion is not claimed here until a matching reviewed-commit result is present.
+### Third independent review
+Reviewed `a4a80365...`.
 
-## 3. CI evidence
+Found one P2:
+- X3: draw refresh can occur while EV persistence is suspended, then stale save completion can restore old EV provenance.
 
-### Run #63 — failure captured
+X3 was accepted and fixed.
+
+### Attempted post-X3 independent re-review
+A new `@codex review` was requested after X3 was fixed.
+
+Result: **BLOCKED by Codex code-review usage limit**. No latest-head independent PASS is claimed.
+
+This is treated as reviewer-capacity evidence, not as a code finding and not as a PASS.
+
+## 3. CI history
+
+### CI #63 — FAIL, captured as backdata
 Candidate: `45ea9e30...`
 
-- Fragment resolution gate: PASS
+- Fragment 1.8.9 resolution gate: PASS
 - `assembleDebug`: FAIL
-- root cause: unresolved `Constants` reference in `ExpectedValueRepositoryImpl.kt`
-- disposition: fixed; failure retained as dogfood evidence
+- cause: intended `Constants.ALGORITHM_VERSION` migration referenced `Constants` without the actual import
 
-### Run #64 — failure captured
+Failure family:
+- `REVIEW-INTENT-DRIFT/IMPORT`
+
+### CI #64 — FAIL, captured as backdata
 Candidate: `4cc63b30...`
 
-- Fragment resolution gate: PASS
+- Fragment gate: PASS
 - `assembleDebug`: PASS
-- debug unit tests: FAIL during test compilation
-- root cause: `?.let(AppResult::Success)` in newly added fake repositories
-- disposition: fixed in both test files; failure retained as dogfood evidence
+- unit-test compilation: FAIL
+- cause: `?.let(AppResult::Success)` in two new fake repositories
 
-### Run #65 — final code validation
-Candidate: `a4a80365bf6a1f80e916261232b5321df099c56e`
+Failure family:
+- `TEST-HARNESS/KOTLIN-CONSTRUCTOR-REF`
 
-Result: **SUCCESS**
+### CI #65 — SUCCESS
+Candidate: `a4a80365...`
 
-Successful gates:
+PASS:
 - Kotlin interpolation checker tests
 - Kotlin interpolation convention
-- Fragment dependency resolution, using `androidxFragmentVersion=1.8.9`
+- Fragment dependency resolution
 - `assembleDebug`
 - debug unit-test task set
-- U1 FlowRow geometry evidence reporting
+- U1 geometry evidence
 
-## 4. v1.0.15 regression preservation
+### CI #67 — SUCCESS
+Candidate: `80301f95...` (X3 freshness guard)
 
-The prior F1/U1/U2 work remains present and its CI gates passed on the validated candidate:
+All gates above: PASS.
 
-- F1 Fragment 1.8.9 resolution SSOT/gate
-- U1 359dp + 2.0x font-scale geometry evidence
-- U2 semantic order vs wrapped visual order regression coverage
+### CI #68 — SUCCESS
+Candidate: `e22d3b46772234fba5d921009ccfedc49b0d6a5e` (X3 stale-run cleanup)
 
-## 5. SHADOW review assessment
+All gates above: PASS.
 
-For the validated code SHA:
+## 4. Dogfood / Leonardo backdata
 
-- deterministic checks: PASS
-- build: PASS
-- unit tests: PASS
-- prior independent findings: RESOLVED
-- unresolved review threads: none from the accepted X1/X2 findings
-- protected security/governance change requiring Adversarial escalation: not identified in this patch
-- G4 replay payload versioning: unchanged backlog
-- G5 durable sync receipt: unchanged backlog
+Reusable failure-family candidates observed in this real repository review:
 
-**Code verdict: PASS for candidate readiness.**
+- `REVIEW-INTENT-DRIFT/IMPORT` — intended edit and actual compiled diff diverge.
+- `REVIEW-STATE-RACE/ASYNC-SAVE` — late async result can corrupt newer UI state.
+- `REVIEW-PROVENANCE/STALE-MESSAGE` — provenance reset and explanatory UI text diverge.
+- `REVIEW-PROVENANCE/STALE-SNAPSHOT` — old computation result is applied after source dataset changes.
+- `REVIEW-PROVENANCE/STALE-PERSISTED-RUN` — stale result is rejected in UI but persists as newest stored record.
+- `TEST-HARNESS/KOTLIN-CONSTRUCTOR-REF` — production build passes but newly added test harness does not compile.
+- `REVIEW-CAPACITY/CODEX-LIMIT` — independent reviewer unavailable due external quota; must be represented as BLOCKED, never PASS.
 
-Because this is the v2.5 SHADOW baseline, this evidence does not self-authorize merge. Merge remains a separate authority decision.
+These are case-bank / regression / rule-calibration data, not claims of model-weight training.
+
+## 5. v1.0.15 regression preservation
+
+Prior F1/U1/U2 protections remain intact on the final validated code candidate:
+
+- F1 Fragment 1.8.9 SSOT + dependency-resolution gate
+- U1 359dp / 2.0x font-scale geometry evidence
+- U2 semantic order vs wrapped visual-order regression coverage
+
+## 6. Remaining intentional backlog
+
+Not changed in this review round:
+
+- G4 replay payload versioning
+- G5 durable sync receipt
+
+They remain explicit backlog and are not silently marked complete.
+
+## 7. Final SHADOW verdict
+
+For validated production-code SHA `e22d3b46772234fba5d921009ccfedc49b0d6a5e`:
+
+- deterministic/build checks: **PASS**
+- debug unit-test task set: **PASS**
+- U1 geometry evidence gate: **PASS**
+- accepted independent findings X1/X2/X3: **RESOLVED**
+- final post-X3 independent review: **BLOCKED — reviewer usage limit**
+- security/governance escalation requiring a separate Adversarial authority: not identified in this patch
+- merge authorization: **NOT SELF-GRANTED**
+
+**Code validation verdict: PASS.**  
+**Independent latest-head review verdict: BLOCKED (capacity), not PASS.**  
+**Merge gate: remains a separate authority decision under SHADOW mode.**
