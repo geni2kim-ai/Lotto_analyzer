@@ -57,6 +57,18 @@ ExpectedValueRunEntity 저장 시 `algorithmVersion = "1.0.0"`이 하드코딩�
 
 **조치:** draw dataset 재계산 시 saved-run provenance를 clear하고, saving reservation을 launch 전에 설정한다. dataset change + duplicate-call 회귀 테스트를 추가한다.
 
+### M4 — one-shot AppResult.Loading이 UI를 영구 loading 상태로 만들 수 있음
+
+파일:
+- `feature/analysis/.../AnalysisViewModel.kt`
+- `feature/history/.../HistoryViewModel.kt`
+- `feature/statistics/.../StatisticsViewModel.kt`
+- `feature/statistics/.../DatabaseViewModel.kt`
+
+현재 repository/engine 구현은 one-shot suspend 호출에서 Loading을 반환하지 않지만, 인터페이스 타입은 허용한다. 일부 caller는 Loading을 받으면 `isLoading/isSyncing/isExpectedValueSaving`을 true로 둔 채 종료하여 이후 완료 이벤트가 없는 상태에서 UI가 영구 잠길 수 있다.
+
+**조치:** one-shot Loading을 terminal incomplete result로 취급해 관련 busy flag를 해제하고 재시도 가능한 메시지를 표시한다.
+
 ### L1 — 선택 탭이 configuration recreation에서 초기화됨
 
 파일: `app/src/main/java/com/example/lottoinsight/app/ui/MainAppScreen.kt`
@@ -68,7 +80,7 @@ ExpectedValueRunEntity 저장 시 `algorithmVersion = "1.0.0"`이 하드코딩�
 ## 3. Planned implementation
 
 - Android version: `versionName = "1.0.16"`, `versionCode = 17`
-- production fixes: H1 / M1 / M2 / M3 / L1
+- production fixes: H1 / M1 / M2 / M3 / M4 / L1
 - regression tests:
   - `ExpectedValueRepositoryImplTest`
   - `AnalysisViewModelTest`

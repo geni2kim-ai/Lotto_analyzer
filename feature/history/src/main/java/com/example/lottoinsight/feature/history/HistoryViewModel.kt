@@ -73,7 +73,12 @@ class HistoryViewModel(
                         }
                     }
                     is AppResult.Loading -> {
-                        _uiState.update { it.copy(isLoading = true) }
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                userMessage = "Run games are not available yet. Please try again."
+                            )
+                        }
                     }
                 }
             } catch (e: CancellationException) {

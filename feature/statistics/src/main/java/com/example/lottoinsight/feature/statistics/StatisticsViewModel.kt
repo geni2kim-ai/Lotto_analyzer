@@ -69,7 +69,7 @@ class StatisticsViewModel(
             when (val result = lottoRepository.syncDraws(::updateProgress)) {
                 is AppResult.Success -> finishSync(result.data, before.size, retry = false)
                 is AppResult.Error -> failSync("동기화 실패")
-                is AppResult.Loading -> Unit
+                is AppResult.Loading -> failSync("동기화가 완료되지 않았습니다.")
             }
         } catch (e: CancellationException) {
             throw e
@@ -92,7 +92,7 @@ class StatisticsViewModel(
             when (val result = lottoRepository.retryDraws(drawNos, ::updateProgress)) {
                 is AppResult.Success -> finishSync(result.data, before.size, retry = true)
                 is AppResult.Error -> failSync("재시도 실패", drawNos)
-                is AppResult.Loading -> Unit
+                is AppResult.Loading -> failSync("재시도가 완료되지 않았습니다.", drawNos)
             }
         } catch (e: CancellationException) {
             throw e
@@ -268,7 +268,14 @@ class StatisticsViewModel(
                             )
                         }
                     }
-                    is AppResult.Loading -> Unit
+                    is AppResult.Loading -> {
+                        _uiState.update {
+                            it.copy(
+                                isExpectedValueSaving = false,
+                                userMessage = "기대값 저장이 완료되지 않았습니다."
+                            )
+                        }
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e

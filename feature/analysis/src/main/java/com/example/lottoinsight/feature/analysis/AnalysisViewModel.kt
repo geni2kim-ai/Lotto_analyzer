@@ -66,7 +66,12 @@ class AnalysisViewModel(
                         }
                     }
                     is AppResult.Loading -> {
-                        _uiState.update { it.copy(isLoading = true) }
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                userMessage = "Analysis did not complete. Please try again."
+                            )
+                        }
                     }
                 }
             } catch (e: CancellationException) {
@@ -108,7 +113,7 @@ class AnalysisViewModel(
                 _uiState.update {
                     it.copy(
                         isSavedSuccess = false,
-                        userMessage = "Generated ${result.games.size} games; analysis history is still being saved."
+                        userMessage = "Generated ${result.games.size} games, but analysis history save did not complete."
                     )
                 }
             }

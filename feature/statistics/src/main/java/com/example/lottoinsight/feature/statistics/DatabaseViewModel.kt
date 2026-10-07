@@ -122,7 +122,7 @@ class DatabaseViewModel(
             when (val result = lottoRepository.syncDraws(::updateProgress)) {
                 is AppResult.Success -> finishSync(result.data, before.size, retry = false)
                 is AppResult.Error -> failSync("수집 실패")
-                is AppResult.Loading -> Unit
+                is AppResult.Loading -> failSync("수집이 완료되지 않았습니다.")
             }
         } catch (e: CancellationException) {
             throw e
@@ -140,7 +140,7 @@ class DatabaseViewModel(
             when (val result = lottoRepository.retryDraws(drawNos, ::updateProgress)) {
                 is AppResult.Success -> finishSync(result.data, before.size, retry = true)
                 is AppResult.Error -> failSync("재시도 실패", drawNos)
-                is AppResult.Loading -> Unit
+                is AppResult.Loading -> failSync("재시도가 완료되지 않았습니다.", drawNos)
             }
         } catch (e: CancellationException) {
             throw e
